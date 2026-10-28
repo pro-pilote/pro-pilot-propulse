@@ -1,0 +1,39 @@
+name: "Sync Socle -> Repos Partenaires (Compilation Texte à Trous)"
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [partner-variables-updated]
+  workflow_dispatch:
+
+jobs:
+  compile-and-sync:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partner_repo:
+          - pro-pilot-pan
+          - pro-pilot-aps
+    steps:
+      - name: Checkout Socle (pro-pilot-propulse)
+        uses: actions/checkout@v4
+        with:
+          path: socle
+
+      - name: Checkout Repo Partenaire (${{ matrix.partner_repo }})
+        uses: actions/checkout@v4
+        with:
+          repository: Pro-Pilot/${{ matrix.partner_repo }}
+          token: ${{ secrets.PRO_PILOT_APP_TOKEN }}
+          path: partner
+
+      - name: Compiler les templates à trous [[ppl.*]] vers guide-propulse.md (Fail-Closed)
+        run: |
+          python3 socle/tools/compile_partner_repo.py socle partner
+
+      - name: Ouvrir PR ou pousser les fichiers générés
+        working-directory: partner
+        run: |
+          git status

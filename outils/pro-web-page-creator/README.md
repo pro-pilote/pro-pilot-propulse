@@ -1,18 +1,21 @@
-# Outil : Pro Web Page Creator (Création de Landing Pages & Pages Web)
+# Guide Propulse Lab — Pro Web Page Creator ([[ppl.partner_name]])
 
-## 1. Objectif
-Générer des pages web de haute qualité (Landing Pages d'acquisition, pages d'inscription webinaire, pages éditoriales) à partir d'un brief partenaire (ex. Google Doc), prêtes à être publiées sur Pro Web.
+## 1. Objectif & Paramètres Pré-remplis
+Générer des pages web de haute qualité (Landing Pages d'acquisition, pages d'inscription webinaire, pages éditoriales) pour **[[ppl.partner_name]]** (`partner_id: [[ppl.partner_id]]`), prêtes à être publiées sur `https://[[ppl.main_domain]]`.
 
-## 2. Fichiers à consulter dans le Repo Partenaire avant génération
+- **Partenaire** : [[ppl.partner_name]] (`[[ppl.partner_id]]`)
+- **Domaine Principal** : `[[ppl.main_domain]]`
+- **Conteneur GTM obligatoire** : `[[ppl.gtm_id]]`
+
+## 2. Fichiers à consulter dans ce dépôt avant génération
 1. `donnees-business/<bu>/<produit>/fiche-produit.md` (promesse, arguments, intervenant/auteur, mentions légales).
-2. `donnees-business/<bu>/<produit>/design-system.md` (palette de couleurs, typographies, style des boutons CTA, mise en page).
-3. `outils/pro-web-page-creator/variables.md` (ID GTM, domaine cible, scripts obligatoires).
-4. `outils/pro-web-page-creator/specificites.md` et `erreurs-connues.md`.
+2. `donnees-business/<bu>/<produit>/design-system.md` (palette de couleurs, typographies, style des boutons CTA).
+3. [`specificites.md`](./specificites.md) et [`erreurs-connues.md`](./erreurs-connues.md).
 
 ## 3. Règles d'Or de Structure HTML/CSS
-- **Zones protégées** : ne jamais inventer ou modifier à la main un script de formulaire d'acquisition ou d'inscription webinaire. Utiliser exclusivement le snippet officiel issu de `outils/pro-webinaire/` ou `outils/pro-acquisition/`.
-- **Responsive Mobile-First** : utiliser des grilles flex/grid fluides, tester systématiquement l'affichage mobile (375px) et desktop (1280px).
-- **Chemins des ressources** : utiliser des chemins relatifs propres ou les URLs CDN validées du partenaire.
+- **Zones protégées** : ne jamais inventer ou modifier à la main un script de formulaire d'acquisition ou d'inscription webinaire. Utiliser exclusivement le snippet officiel pré-rempli dans `outils/pro-webinaire/guide-propulse.md` ou `outils/pro-acquisition/guide-propulse.md`.
+- **Tracking GTM** : toujours conserver le conteneur `[[ppl.gtm_id]]` intact.
+- **Responsive Mobile-First** : tester systématiquement l'affichage mobile (`375px`) et desktop (`1280px`).
 
 ## 4. Prévisualisation et Publication
-Une fois la page générée, utiliser [`outils/pro-web-uploader/README.md`](../pro-web-uploader/README.md) pour lancer l'aperçu local (`127.0.0.1`) puis publier sur Pro Web.
+Utiliser `outils/pro-web-uploader/guide-propulse.md` pour lancer l'aperçu local (`http://127.0.0.1`) puis publier sur `[[ppl.main_domain]]`.
