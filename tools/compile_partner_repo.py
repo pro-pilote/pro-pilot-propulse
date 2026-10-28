@@ -51,7 +51,7 @@ def compile_partner(socle_dir: Path, partner_dir: Path):
         if v_file.exists():
             merged_vars.update(parse_variables_md(v_file.read_text(encoding="utf-8")))
 
-    generated_hashes = {}
+    generated_hashes = []
 
     # 1. Compiler uniquement les outils activés chez ce partenaire
     for tool_slug in active_tools:
@@ -70,7 +70,7 @@ def compile_partner(socle_dir: Path, partner_dir: Path):
         if old_readme.exists():
             old_readme.unlink()
         rel = str(target_guide.relative_to(partner_dir))
-        generated_hashes[rel] = hashlib.sha256(rendered_guide.encode("utf-8")).hexdigest()
+        generated_hashes.append({"file": rel, "checksum": "sha256-" + hashlib.sha256(rendered_guide.encode("utf-8")).hexdigest()})
 
     # 2. Compiler ROUTER.md à la racine du partenaire
     rendered_router = render_template(
@@ -79,7 +79,7 @@ def compile_partner(socle_dir: Path, partner_dir: Path):
         "ROUTER.md"
     )
     (partner_dir / "ROUTER.md").write_text(rendered_router, encoding="utf-8")
-    generated_hashes["ROUTER.md"] = hashlib.sha256(rendered_router.encode("utf-8")).hexdigest()
+    generated_hashes.append({"file": "ROUTER.md", "checksum": "sha256-" + hashlib.sha256(rendered_router.encode("utf-8")).hexdigest()})
 
     # 3. Synchroniser getting-started/, regles/ et tools/
     for folder in ["getting-started", "regles", "tools"]:
@@ -91,7 +91,7 @@ def compile_partner(socle_dir: Path, partner_dir: Path):
         for p in sorted(dst_folder.rglob("*")):
             if p.is_file():
                 rel = str(p.relative_to(partner_dir))
-                generated_hashes[rel] = hashlib.sha256(p.read_bytes()).hexdigest()
+                generated_hashes.append({"file": rel, "checksum": "sha256-" + hashlib.sha256(p.read_bytes()).hexdigest()})
 
     # 4. Écrire le manifeste de verrouillage generated.lock
     lock_file = partner_dir / "generated.lock.json"
