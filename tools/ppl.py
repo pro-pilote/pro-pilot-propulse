@@ -86,12 +86,10 @@ def cmd_render(sub_args=None):
                 target.write_text(replace_vars(raw_text), encoding="utf-8")
 
     router_file = socle_dir / "ROUTER.md"
-    rules_path = partner_dir / "RULES.md"
     if router_file.exists():
-        rules_path.write_text(replace_vars(router_file.read_text(encoding="utf-8")), encoding="utf-8")
+        (rendered_dir / "ROUTER.md").write_text(replace_vars(router_file.read_text(encoding="utf-8")), encoding="utf-8")
 
     print(f"✅ Rendu terminé dans {rendered_dir} (v{version})")
-    print(f"   📄 RULES.md généré dans {rules_path}")
     return 0
 
 
