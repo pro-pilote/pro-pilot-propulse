@@ -1,32 +1,29 @@
-# Getting Started — Starter Pack Pro-Pilot
+# Prise en Main — Pro-Pilot (`getting-started`)
 
-Bienvenue dans **Pro-Pilot**. Ce dossier permet à votre assistant IA (Claude Code, Cursor, ChatGPT, Grok, Antigravity) de connaître votre métier, vos produits et d'exécuter vos actions sur Pro Web via l'API publique en toute sécurité.
+Bienvenue dans **Pro-Pilot**, le socle d'instructions permettant de créer, prévisualiser et publier des objets web (`PAGE` HTML ou `DOCUMENT` PDF/image) ou d'importer des pages externes sur **Pro Web** via l'API officielle (`https://api-pro-web.propulse-lab.com`) avec votre assistant IA (Claude Code, Cursor, Antigravity).
 
-## Étape 0 — Prérequis Techniques (1 seule fois)
+## 1. Initialisation en 2 étapes (Zéro Dépendance)
 
-1. Créez un fichier `.env` à la racine de votre dépôt partenaire avec la clé API fournie par Propulse Lab :
+1. **Configurer la clé API** : créez un fichier `.env` à la racine de votre dépôt partenaire `pro-pilot-<partenaire>` (ignoré par Git) :
    ```env
-   PRO_WEB_API_KEY=votre_cle_api_ici
+   PRO_WEB_API_KEY=votre_cle_api_pro_web
    ```
-2. Votre assistant IA synchronise automatiquement le socle de règles dans `.pro-pilot/` (ignoré par Git) via :
+2. **Synchroniser le socle `.pro-pilot/`** (exécuté automatiquement par votre assistant IA à la lecture de `CLAUDE.md` / `AGENTS.md` / `RULES.md`) :
    ```bash
-   [ -d .pro-pilot ] && git -C .pro-pilot pull --ff-only || git clone --depth 1 https://github.com/pro-pilote/pro-pilot-propulse.git .pro-pilot
+   if [ -d .pro-pilot/.git ]; then
+     git -C .pro-pilot pull --ff-only
+   else
+     git clone --depth 1 https://github.com/pro-pilote/pro-pilot-propulse.git .pro-pilot
+   fi
    ```
 
-## Étape 1 — Premier lancement (Onboarding)
+## 2. Questionnaire de Profilage Initial (Exécuté par l'IA au 1er lancement)
 
-Lors de votre toute première session, votre IA vous pose **4 questions rapides** :
-1. **Qui êtes-vous ?** (Votre organisation / marque et votre rôle)
-2. **Quel est votre périmètre au quotidien ?** (Édito, Acquisition, ou actions ciblées)
-3. **Confirmation de vos actions :** l'IA vous propose la liste des actions correspondant à votre besoin et vous demande de la confirmer.
-4. **Votre niveau technique :** pour adapter son vocabulaire (zéro jargon technique si vous préférez une approche 100 % métier).
+Lors de la toute première session d'un collaborateur (si `./.pro-pilot-profile.md` n'existe pas à la racine du dépôt partenaire), l'IA pose ces **3 questions courtes** :
+1. **Quel est ton rôle principal ?** *(ex. Copywriter / Édito, Traffic Manager / Acquisition, Chef de projet, Intégrateur / Tech)*
+2. **Sur quelle marque / Business Unit travailles-tu principalement ?** *(voir `donnees-business/README.md`)*
+3. **Quel niveau d'accompagnement souhaites-tu ?**
+   - **Mode Guidé (No-Code)** : l'IA s'occupe de toute la technique (`curl`, aperçu navigateur, publication API) et ne te pose que des questions métier.
+   - **Mode Expert (Tech)** : l'IA affiche les payloads JSON et les réponses HTTP détaillées.
 
-Vos réponses sont enregistrées uniquement sur votre ordinateur dans `.pro-pilot/profile.md`.
-
-## Étape 2 — Utilisation au quotidien
-
-Exprimez simplement votre demande en langage naturel et glissez vos pièces jointes (Google Docs, PDF, brief) :
-- *« Crée une page HTML de présentation à partir de ce document et publie cet objet sur Pro Web. »*
-- *« Importe cette URL Leadpages sur notre site Pro Web. »*
-
-Votre IA consulte automatiquement le routeur [`ROUTER.md`](../ROUTER.md), charge les fiches de votre dépôt partenaire et appelle l'API Pro Web après votre validation.
+Les réponses sont enregistrées localement dans `./.pro-pilot-profile.md` (à la racine du dépôt partenaire, ignoré par Git ; ne jamais écrire dans `.pro-pilot/`).
