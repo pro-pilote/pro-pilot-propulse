@@ -3,25 +3,20 @@
 ppl — CLI Unifié de la Suite Propulse Lab Pro-Pilot.
 
 Conception & Architecture : Medi Chabrol · Propulse Lab
-Doctrine Globale : Pro-IPS, Cloisonnement Multi-Tenant, Zero Extrapolation.
+Doctrine Globale : 100% API Key (x-api-key), Cloisonnement Multi-Tenant, Zero Extrapolation.
 
 Usage :
   python ppl.py doctor
-  python ppl.py login [--paste]
   python ppl.py render
-  python ppl.py static <pull|preview|push|diff|ls|resolve> [domaine]
+  python ppl.py static <pull|preview|push|add|rm|set-home|replace|ls|resolve> [domaine]
 """
 
 import os
-import sys
-import json
 import re
-import subprocess
+import sys
 from pathlib import Path
 
-# Chargement du socle multi-OS
 import proweb_env
-import proweb_auth
 
 ROOT_DIR = Path(__file__).resolve().parent
 
@@ -32,27 +27,26 @@ Architecture & Conception : Medi Chabrol
 ========================================================================
 
 Commandes Disponibles :
-  • static     → Sites Vitrines STATIC Pro Web (S3 / CloudFront)
-  • render     → Génération de la documentation rendue (.pro-pilot/rendered/)
-  • doctor     → Diagnostic complet de l'OS, de la machine et du token
-  • login      → Connexion Pro Web (auth de transition Lot A)
+  • static     → Objets & Sites Pro Web (API Publique S3 / CloudFront)
+  • render     → Génération optionnelle de la doc rendue (.pro-pilot/rendered/)
+  • doctor     → Diagnostic de l'OS, de la machine et de la clé API (PRO_WEB_API_KEY)
 
 Usage :
-  ppl static pull <domaine>
-  ppl static preview <domaine>
-  ppl static push <domaine>
-  ppl render
-  ppl doctor
+  ./ppl static ls <domaine>
+  ./ppl static pull <domaine>
+  ./ppl static preview <domaine>
+  ./ppl static push <domaine>
+  ./ppl doctor
 """
 
 
 def cmd_render(sub_args=None):
-    """Génère la documentation rendue dans .pro-pilot/rendered/ et ./RULES.md."""
+    """Génère la documentation rendue dans .pro-pilot/rendered/."""
     partner_dir = Path(os.environ.get("PPL_WORKSPACE") or os.getcwd()).resolve()
     socle_dir = ROOT_DIR.parent
     if (partner_dir / ".pro-pilot").exists():
         socle_dir = partner_dir / ".pro-pilot"
-    
+
     version = "1.0.0"
     if (socle_dir / "VERSION").exists():
         version = (socle_dir / "VERSION").read_text(encoding="utf-8").strip()
@@ -109,11 +103,6 @@ def main():
             pass
         import ppl_static
         ppl_static.cmd_doctor(DummyArgs())
-        sys.exit(0)
-
-    elif cmd == "login":
-        force_paste = "--paste" in sub_args
-        proweb_auth.run(force_paste=force_paste)
         sys.exit(0)
 
     elif cmd == "static":

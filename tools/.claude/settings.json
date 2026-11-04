@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Read(.pro-pilot/ROUTER.md)",
-      "Read(.pro-pilot/regles/**)",
-      "Read(.pro-pilot/outils/**)",
-      "Read(.pro-pilot/getting-started/**)"
+      "Read(.pro-pilot/**)"
     ],
     "ask": [
       "Bash(*--go*)",
@@ -16,10 +13,6 @@
       "Bash(*expect*)",
       "Bash(*unbuffer*)",
       "Bash(*tmux*)",
-      "Read(~/.pro-web-static/**)",
-      "Bash(*token.json*)",
-      "Bash(*.pro-web-static*)",
-      "Bash(curl*pro-web.propulse-lab.com*)",
       "Bash(python*-c*)",
       "Edit(*.py)",
       "Edit(**/*.py)",

@@ -1,6 +1,6 @@
 # Pro-Pilot — Socle Propulse Lab (`pro-pilot-propulse`)
 
-Socle central de connaissances, de routage et d'outillage pour accompagner les équipes partenaires dans la création et la publication de contenus Pro Web (Landing Pages et Sites Statiques).
+Socle central de connaissances, de routage et d'outillage pour accompagner les équipes partenaires dans la création et la publication d'objets Pro Web (Landing Pages, PDF, Images et Sites Statiques).
 
 ## Architecture du Dépôt
 
@@ -24,14 +24,13 @@ pro-pilot-propulse/
 │   │   └── guide.md                       # Scraper une URL externe (ex. Leadpages) pour l'importer sur Pro Web
 │   └── pro-web-uploader/
 │       └── guide.md                       # Créer, prévisualiser et publier un objet (PAGE/DOCUMENT) sur Pro Web
-└── tools/                                 # Moteur d'exécution local (CLI ppl)
+└── tools/                                 # Moteur d'exécution local (CLI ppl — 100% API Key)
     ├── .claude/
     │   └── settings.json                  # Règles deny de sécurité Claude
     ├── bootstrap.template.py              # Template du script bootstrap partenaire
     ├── ppl                                # Lanceur macOS / Linux
     ├── ppl.cmd                            # Lanceur Windows
-    ├── ppl.py                             # CLI unifié (static, doctor)
-    ├── ppl_static.py                      # Déploiement S3/CloudFront & API Pro Web
-    ├── proweb_auth.py                     # Auth de transition Lot A
-    └── proweb_env.py                      # Détection d'environnement & lecture .env
+    ├── ppl.py                             # CLI unifié (static, doctor, render)
+    ├── ppl_static.py                      # Déploiement S3/CloudFront & API Publique Pro Web
+    └── proweb_env.py                      # Détection d'environnement & lecture PRO_WEB_API_KEY
 ```

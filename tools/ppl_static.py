@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
 """
-ppl_static — boîte à outils pour gérer un site STATIC sur la plateforme Pro Web
-(pro-web.propulse-lab.com), assisté par IA (Claude Code).
-
-La boîte fournit les *mains* (récupérer / éditer en local / publier) ; le
-*cerveau*, c'est Claude Code — ta propre session, en local. Aucune IA côté
-serveur, rien à payer en tokens en plus de ta souscription habituelle.
+ppl_static — boîte à outils pour gérer des objets (PAGE / DOCUMENT) et sites
+sur la plateforme Pro Web via l'API publique (x-api-key).
 
 Workflow type :
 
-    python3 ppl_static.py pull   <domaine>     # miroir local complet du site
-    (ouvre Claude Code à la racine du kit et décris ta modif dans sites/<domaine>/)
-    python3 ppl_static.py preview <domaine>    # http://localhost:8080 avant publication
-    python3 ppl_static.py push   <domaine>     # publie seulement les fichiers modifiés
+    ./ppl static pull   <domaine>     # miroir local des objets du site
+    ./ppl static preview <domaine>    # http://127.0.0.1:8080 avant publication
+    ./ppl static push   <domaine>     # publie seulement les fichiers modifiés
 
-Auth : lance d'abord `python ppl.py login` (voir README.md). Toute écriture
+Auth : configure `PRO_WEB_API_KEY` dans `.env` ou l'environnement. Toute écriture
 (push/add/rm/set-home) est en PROD → dry-run par défaut, `--go` pour publier.
 
-Commandes : resolve · ls · pull · preview · push · add · rm · set-home
+Commandes : resolve · ls · pull · preview · push · add · rm · set-home · replace
 """
 
 import argparse
@@ -39,8 +34,7 @@ try:
 except ImportError:
     sys.exit(f"❌ dépendance manquante : {env.PY_CMD} -m pip install requests")
 
-BASE_URL = f"https://{env.DOMAIN}"
-TOKEN_PATH = env.TOKEN_PATH
+PUBLIC_API_URL = env.PUBLIC_API_URL
 BASE = Path(__file__).resolve().parent
 WORKSPACE = Path(os.environ.get("PPL_WORKSPACE") or os.getcwd()).resolve()
 SITES = WORKSPACE / "sites"
@@ -138,163 +132,53 @@ def write_json(path, obj):
     path.write_text(to_json(obj), encoding="utf-8")
 
 
-# --- auth + appel API ----------------------------------------------------
-def load_token():
-    if not TOKEN_PATH.exists():
-        die(f"pas de token — lance d'abord : {env.PY_CMD} ppl.py login\n"
-            f"   (ou crée {TOKEN_PATH} à la main, voir README.md)")
-    data = read_json(TOKEN_PATH)
-    if not data.get("bearer"):
-        die(f"{TOKEN_PATH} ne contient pas de champ 'bearer' — relance : {env.PY_CMD} ppl.py login")
-    return data
+# --- auth + appel API (100% x-api-key, zéro cookie) ----------------------
+_TELEMETRY_LOCK = threading.Lock()
 
 
-_TOKEN = None
-_TOKEN_EPOCH = 0
-_REFRESH_LOCK = threading.Lock()
 
-
-def _get_token():
-    """Charge le token ou la clé API une seule fois par process."""
-    global _TOKEN
-    if _TOKEN is None:
-        api_key = env.get_api_key()
-        if api_key:
-            _TOKEN = {"api_key": api_key}
-        else:
-            _TOKEN = load_token()
-    return _TOKEN
-
-
-def _refresh_token(epoch_seen):
-    """Rafraîchissement interactif du token sur 401. `push`/`pull` tournent
-    en parallèle (plusieurs threads) : si le token expire en cours de route,
-    plusieurs appels peuvent 401 en même temps — un seul déclenche le prompt
-    (verrou + comparaison d'epoch), les autres attendent puis réessaient avec
-    le token déjà rafraîchi sans re-demander à l'utilisateur."""
-    global _TOKEN, _TOKEN_EPOCH
-    with _REFRESH_LOCK:
-        if _TOKEN_EPOCH != epoch_seen:
-            return True  # déjà rafraîchi par un autre thread pendant l'attente du verrou
-        try:
-            if env.get_auth_strategy() == "chrome_keychain":
-                try:
-                    import proweb_auth
-                    payload = proweb_auth.fetch_token()
-                    if payload.get("bearer") and payload.get("bearer") != (_TOKEN or {}).get("bearer"):
-                        write_json(TOKEN_PATH, payload)
-                        _TOKEN = payload
-                        _TOKEN_EPOCH += 1
-                        return True
-                except Exception:
-                    pass
-                if not sys.stdin.isatty():
-                    return False
-                input(f"\n⏸  Token expiré. Recharge {BASE_URL} dans Chrome (déconnecte-toi puis "
-                      f"reconnecte-toi si le simple rechargement ne suffit pas), puis appuie sur "
-                      f"Entrée pour réessayer (Ctrl+C pour abandonner)… ")
-                try:
-                    import proweb_auth
-                    payload = proweb_auth.fetch_token()
-                except Exception as e:
-                    print(f"  ⚠️  rafraîchissement automatique impossible ({e}) — "
-                          f"relance '{env.PY_CMD} ppl.py login' toi-même (voir README).")
-                    return False
-                write_json(TOKEN_PATH, payload)
-                _TOKEN = payload
-                _TOKEN_EPOCH += 1
-                return True
-            else:
-                if not sys.stdin.isatty():
-                    return False
-                input(f"\n⏸  Token expiré. Lance '{env.PY_CMD} ppl.py login' dans un terminal séparé pour "
-                      f"renouveler ton token, puis appuie sur Entrée pour continuer (Ctrl+C pour abandonner)… ")
-                tok = load_token()
-                if tok and tok.get("bearer"):
-                    _TOKEN = tok
-                    _TOKEN_EPOCH += 1
-                    return True
-                print("  ❌ Aucun token valide trouvé dans token.json après Entrée.")
-                return False
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return False
-
-
-PUBLIC_API_URL = os.environ.get("PRO_WEB_PUBLIC_API_URL") or "https://api-pro-web.propulse-lab.com"
-
-
-def api(method, path, partner=None, body=None, soft=False, _retried=False):
-    """Appelle l'API Pro Web (M2M x-api-key en priorité, ou session Bearer en Lot A)."""
+def api(method, path, partner=None, body=None, soft=False):
+    """Appelle l'API Publique Pro Web exclusivement via x-api-key."""
     api_key = env.get_api_key()
-    if api_key:
-        clean_path = "/" + path.lstrip("/")
-        if clean_path.startswith("/api/"):
-            clean_path = clean_path[4:]
-        url = PUBLIC_API_URL.rstrip("/") + clean_path
-        headers = {
-            "accept": "application/json, text/plain, */*",
-            "content-type": "application/json",
-            "x-api-key": api_key,
-            "user-agent": "Mozilla/5.0 ppl_static.py",
-        }
-        params = {}
-        req_body = body
-        if partner is not None and method.upper() == "GET":
-            params["partnerId"] = str(partner)
-        elif isinstance(body, dict) and method.upper() == "POST":
-            req_body = dict(body)
-            if partner is not None:
-                req_body["partnerId"] = int(partner)
-            if clean_path == "/objects/signed-url":
-                allowed = {"websiteId", "partnerId", "key", "contentType"}
-                req_body = {k: v for k, v in req_body.items() if k in allowed}
-            elif clean_path == "/objects/upsert":
-                allowed = {
-                    "websiteId", "partnerId", "key", "type", "subtype",
-                    "originalFileName", "originalUrl", "leadpageEditUrl", "hasIndexing",
-                }
-                req_body = {k: v for k, v in req_body.items() if k in allowed and v is not None}
-        r = requests.request(method, url, headers=headers, json=req_body, params=params, timeout=30)
-        if not r.ok:
-            if soft:
-                return None
-            die(f"{method} {url} → HTTP {r.status_code}\n{r.text[:500]}")
-        if not r.content:
-            return None
-        try:
-            return r.json()
-        except ValueError:
-            return r.text
-
-    epoch = _TOKEN_EPOCH
-    tok = _get_token()
-    if not tok or not tok.get("bearer"):
-        die(f"Non connecté. Configure PRO_WEB_API_KEY ou lance : {env.PY_CMD} ppl.py login")
-    cookies = {"userCredential": tok["bearer"]}
-    if tok.get("g_state_cookie"):
-        cookies["g_state"] = tok["g_state_cookie"]
-    if tok.get("auth_cookie"):
-        cookies["auth"] = tok["auth_cookie"]
-    if partner is not None:
-        cookies["partner"] = str(partner)
+    if not api_key:
+        die("Clé API manquante : définissez PRO_WEB_API_KEY dans votre fichier de configuration local ou votre environnement.")
+    clean_path = "/" + path.lstrip("/")
+    if clean_path.startswith("/api/"):
+        clean_path = clean_path[4:]
+    url = PUBLIC_API_URL.rstrip("/") + clean_path
     headers = {
         "accept": "application/json, text/plain, */*",
-        "authorization": f"Bearer {tok['bearer']}",
-        "origin": BASE_URL,
-        "referer": f"{BASE_URL}/",
+        "content-type": "application/json",
+        "x-api-key": api_key,
         "user-agent": "Mozilla/5.0 ppl_static.py",
     }
-    if partner is not None:
-        headers["x-partner-id"] = str(partner)
-    url = BASE_URL.rstrip("/") + "/" + path.lstrip("/")
-    r = requests.request(method, url, headers=headers, cookies=cookies, json=body, timeout=30)
-    if r.status_code == 401:
-        if soft:
-            return None
-        if not _retried and _refresh_token(epoch):
-            return api(method, path, partner, body, soft=soft, _retried=True)
-        die(f"401 sur {url} — token toujours expiré. Relance : {env.PY_CMD} ppl.py login")
+    params = {}
+    req_body = body
+    if partner is not None and method.upper() == "GET":
+        params["partnerId"] = str(partner)
+    elif isinstance(body, dict) and method.upper() in ("POST", "DELETE"):
+        req_body = dict(body)
+        if partner is not None:
+            req_body["partnerId"] = int(partner)
+        if clean_path == "/objects/signed-url":
+            allowed = {"websiteId", "partnerId", "key", "contentType"}
+            req_body = {k: v for k, v in req_body.items() if k in allowed}
+        elif clean_path == "/objects/upsert":
+            allowed = {
+                "websiteId", "partnerId", "key", "type", "subtype",
+                "originalFileName", "originalUrl", "leadpageEditUrl", "hasIndexing",
+            }
+            req_body = {k: v for k, v in req_body.items() if k in allowed and v is not None}
+        elif clean_path == "/objects/upload-page":
+            allowed = {
+                "websiteId", "partnerId", "key", "type", "subtype",
+                "originalUrl", "hasIndexing",
+            }
+            req_body = {k: v for k, v in req_body.items() if k in allowed and v is not None}
+        elif clean_path == "/objects" and method.upper() == "DELETE":
+            allowed = {"websiteId", "partnerId", "key"}
+            req_body = {k: v for k, v in req_body.items() if k in allowed and v is not None}
+    r = requests.request(method, url, headers=headers, json=req_body, params=params, timeout=30)
     if not r.ok:
         if soft:
             return None
@@ -305,8 +189,6 @@ def api(method, path, partner=None, body=None, soft=False, _retried=False):
         return r.json()
     except ValueError:
         return r.text
-
-
 def _items(data):
     if isinstance(data, dict):
         return data.get("data", data)
@@ -331,16 +213,6 @@ def site_dir(info):
 
 def site_label(info):
     return info["domain"] or info["websiteId"]
-
-
-def my_partners():
-    """Les partenaires accessibles à TON compte (endpoint /api/auth/user, ne
-    nécessite pas de x-partner-id — c'est ta propre identité)."""
-    data = api("POST", "/api/auth/user")
-    partners = (data or {}).get("data", {}).get("partners") or []
-    if not partners:
-        die("ton compte n'est rattaché à aucun partenaire Pro Web (réponse /api/auth/user vide).")
-    return partners
 
 
 def _website_info(w, partner):
@@ -369,7 +241,7 @@ def _load_local_partner_vars():
 
 
 def resolve(domain, refresh=False, require=True):
-    """Trouve le website record d'un domaine."""
+    """Trouve le website record d'un domaine via l'API publique (x-api-key) et variables.md."""
     domain = norm_domain(domain)
     cache = load_cache()
     if not refresh and domain in cache and cache[domain].get("websiteId"):
@@ -380,95 +252,50 @@ def resolve(domain, refresh=False, require=True):
     local_wid = local_vars.get("website_id")
     local_pid = int(local_vars["partner_id"]) if str(local_vars.get("partner_id", "")).isdigit() else None
 
-    api_key = env.get_api_key()
-    if api_key:
-        data = api("GET", "/websites", soft=True)
-        exact, fallback = None, None
-        for w in _items(data or []):
-            w_dom = norm_domain(w.get("domainName") or w.get("url") or "")
-            if not w_dom:
-                continue
-            pid = w.get("partnerId") or w.get("partner") or local_pid or 0
-            if w_dom == domain:
-                exact = _website_info(w, pid)
-                break
-            elif w_dom.removeprefix("www.") == domain.removeprefix("www.") and not fallback:
-                fallback = _website_info(w, pid)
-        matched = exact or fallback
-        if matched and not matched.get("websiteId") and local_wid:
-            if not local_dom or domain.removeprefix("www.") == local_dom.removeprefix("www."):
-                matched["websiteId"] = local_wid
-        if not matched and local_wid and local_pid and local_dom and domain.removeprefix("www.") == local_dom.removeprefix("www."):
-            matched = {"domain": domain, "websiteId": local_wid, "partner": local_pid, "type": "STATIC", "url": f"https://{domain}"}
-        if matched and matched.get("websiteId"):
-            cache[domain] = matched
-            if matched.get("domain"):
-                cache[norm_domain(matched["domain"])] = matched
-            save_cache(cache)
-            return matched
-        if require:
-            die(f"'{domain}' introuvable ou sans websiteId associé à cette clé API. Utilise --website-id <ID> --partner <PID>.")
-        return None
-
-    # Fallback legacy multi-partners (Lot A)
-    exact = None
-    fallback = None
-    for pid in my_partners():
-        data = api("GET", "/api/websites", pid, soft=True)
-        if not data:
+    data = api("GET", "/websites", soft=True)
+    exact, fallback = None, None
+    for w in _items(data or []):
+        w_dom = norm_domain(w.get("domainName") or w.get("url") or "")
+        if not w_dom:
             continue
-        for w in _items(data):
-            w_dom = norm_domain(w.get("domainName") or "")
-            if w_dom == domain:
-                exact = _website_info(w, pid)
-                break
-            elif w_dom.removeprefix("www.") == domain.removeprefix("www."):
-                if not fallback:
-                    fallback = _website_info(w, pid)
-        if exact:
+        pid = w.get("partnerId") or w.get("partner") or local_pid or 0
+        if w_dom == domain:
+            exact = _website_info(w, pid)
             break
+        elif w_dom.removeprefix("www.") == domain.removeprefix("www.") and not fallback:
+            fallback = _website_info(w, pid)
     matched = exact or fallback
-    if matched:
+    if matched and not matched.get("websiteId") and local_wid:
+        if not local_dom or domain.removeprefix("www.") == local_dom.removeprefix("www."):
+            matched["websiteId"] = local_wid
+    if not matched and local_wid and local_pid and local_dom and domain.removeprefix("www.") == local_dom.removeprefix("www."):
+        matched = {"domain": domain, "websiteId": local_wid, "partner": local_pid, "type": "STATIC", "url": f"https://{domain}"}
+    if matched and matched.get("websiteId"):
         cache[domain] = matched
         if matched.get("domain"):
             cache[norm_domain(matched["domain"])] = matched
         save_cache(cache)
         return matched
     if require:
-        die(f"'{domain}' introuvable parmi les sites de ton compte. Vérifie le domaine, "
-            f"ou utilise --website-id/--partner directement (visibles dans l'URL Pro Web : "
-            f"#/websites/<ID>/objects/).")
+        die(f"'{domain}' introuvable ou sans websiteId associé à cette clé API. Utilise --website-id <ID> --partner <PID>.")
     return None
 
 
 def resolve_by_id(website_id, partner):
-    """Bypass 'resolve' : website-id + partner donnés directement (pas besoin
-    de connaître le domaine). Alimente aussi le cache domaine→info si le site
-    a un domaine, pour que 'resolve <domaine>' en profite ensuite."""
-    if env.get_api_key():
-        local_vars = _load_local_partner_vars()
-        dom = norm_domain(local_vars.get("main_domain") or "") or website_id
-        info = {
-            "domain": dom,
-            "websiteId": website_id,
-            "partner": int(partner),
-            "type": "STATIC",
-            "url": f"https://{dom}" if "." in dom else "",
-        }
-        cache = load_cache()
-        cache[dom] = info
-        save_cache(cache)
-        return info
-    data = api("GET", "/api/websites", partner)
-    for w in _items(data):
-        if w.get("_id") == website_id:
-            info = _website_info(w, partner)
-            if info["domain"]:
-                cache = load_cache()
-                cache[info["domain"]] = info
-                save_cache(cache)
-            return info
-    die(f"websiteId '{website_id}' introuvable sous le partenaire {partner}.")
+    """Bypass 'resolve' : website-id + partner donnés directement."""
+    local_vars = _load_local_partner_vars()
+    dom = norm_domain(local_vars.get("main_domain") or "") or website_id
+    info = {
+        "domain": dom,
+        "websiteId": website_id,
+        "partner": int(partner),
+        "type": "STATIC",
+        "url": f"https://{dom}" if "." in dom else "",
+    }
+    cache = load_cache()
+    cache[dom] = info
+    save_cache(cache)
+    return info
 
 
 def get_info(args, fresh=False):
@@ -1007,8 +834,45 @@ def cmd_rm(args):
     print(f"rm : {info['domain']} / {args.key}  (id {rec['_id']})")
     if not gate(args, "Ajoute --go pour supprimer.", "SUPPRIMER en PROD ?"):
         return
-    api("DELETE", "/api/objects", info["partner"], {"s3Object": rec})
+    api("DELETE", "/objects", info["partner"], {"websiteId": info["websiteId"], "key": args.key, "s3Object": rec})
     print("✅ supprimé.")
+
+
+def cmd_import_url(args):
+    """Scrape une URL externe (originalUrl) et l'importe sur Pro Web en tant qu'objet PAGE (upload-page)."""
+    info = get_info(args, fresh=True)
+    check_static(info)
+    key = args.key.lstrip("/")
+    check_key_allowed(info, key)
+    try:
+        args.original_url.encode("ascii")
+    except UnicodeEncodeError:
+        die("originalUrl doit être strictement ASCII (aucun caractère accentué autorisé).")
+    print(f"import-url : {args.original_url}  →  {info['domain']} / {key}  ({args.subtype})")
+    if not gate(args, "Ajoute --go pour lancer l'import en PROD.", "Importer cette URL externe en PROD ?"):
+        return
+    api("POST", "/objects/upload-page", info["partner"], {
+        "websiteId": info["websiteId"],
+        "partnerId": info["partner"],
+        "key": key,
+        "type": "PAGE",
+        "subtype": args.subtype,
+        "originalUrl": args.original_url,
+        "hasIndexing": bool(args.indexing),
+    })
+    print(f"✅ import déclenché : {base_url(info)}/{key}")
+
+
+def cmd_reload_page(args):
+    """Recharge le HTML d'un objet PAGE existant depuis son originalUrl (reload-page)."""
+    info = get_info(args, fresh=True)
+    print(f"reload-page : objectId {args.object_id} sur {info['domain']}")
+    if not gate(args, "Ajoute --go pour recharger la page en PROD.", "Recharger cette page en PROD ?"):
+        return
+    api("POST", f"/objects/{args.object_id}/reload-page", info["partner"], {
+        "partnerId": info["partner"],
+    })
+    print(f"✅ rechargement déclenché pour l'objet {args.object_id}.")
 
 
 def cmd_sethome(args):
@@ -1037,42 +901,32 @@ def cmd_sethome(args):
 
 
 def cmd_doctor(args):
-    """Vérification diagnostique complète de la machine hôte et du connecteur."""
+    """Vérification diagnostique complète de la machine hôte et de la clé API Pro Web."""
     print("╔════════════════════════════════════════════════════════════════════════════╗")
-    print("║                   PROPULSE LAB · PRO WEB STATIC CONNECTOR                  ║")
+    print("║                   PROPULSE LAB · PRO WEB API CONNECTOR                     ║")
     print("╠════════════════════════════════════════════════════════════════════════════╣")
     print(f"║ 💻 OS Hôte        : {env.OS_NAME:<54} ║")
     print(f"║ 🏷️ Machine        : {env.HOSTNAME:<54} ║")
     print(f"║ 🐍 Lanceur Python : {env.PY_CMD:<54} ║")
     api_key = env.get_api_key()
-    if api_key:
-        strat = "Clé API M2M (PRO_WEB_API_KEY)"
-    else:
-        strat = "macOS Chrome Keychain (auto)" if env.get_auth_strategy() == "chrome_keychain" else "Mode Guidé / Token collé"
+    strat = "Clé API M2M (PRO_WEB_API_KEY / x-api-key)"
     print(f"║ 🔑 Stratégie Auth : {strat:<54} ║")
 
-    st = env.check_token_status()
-    t_status = "Inexistant"
     if api_key:
         masked = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "Active"
         t_status = f"Clé API configurée ({masked})"
-    elif st["exists"]:
-        if st["valid"]:
-            rem_m = int((st["remaining_seconds"] or 0) / 60)
-            t_status = f"Valide ({rem_m} min restantes · {st['email'] or 'connecté'})"
-        else:
-            t_status = "Expiré (rafraîchissement requis)"
+    else:
+        t_status = "Non configurée (PRO_WEB_API_KEY absente)"
     print(f"║ 📂 Auth Locale    : {t_status:<54} ║")
 
-    # Test réseau rapide vers l'API
+    # Test réseau rapide vers l'API publique
     net_status = "Vérification en cours..."
-    target_url = PUBLIC_API_URL if api_key else BASE_URL
     try:
-        r = requests.head(target_url, timeout=4)
+        r = requests.head(PUBLIC_API_URL, timeout=4)
         net_status = f"Accessible (HTTP {r.status_code})"
     except Exception as e:
         net_status = f"Inaccessible ({str(e)[:30]})"
-    print(f"║ 🌐 API Pro Web    : {net_status:<54} ║")
+    print(f"║ 🌐 API Publique   : {net_status:<54} ║")
 
     # Test TTY interactif
     tty_ok = sys.stdin.isatty()
@@ -1084,10 +938,10 @@ def cmd_doctor(args):
         print("💡 [CONSEIL WINDOWS] : Veillez à ce que votre éditeur et Git conservent les fins de ligne")
         print("   en LF (et non CRLF) pour ne pas altérer les calculs de hash SHA-256 lors des push.\n")
 
-    if api_key or (st["exists"] and not st["expired"]):
-        print("✅ Connecteur opérationnel et prêt à l'emploi.\n")
+    if api_key:
+        print("✅ Connecteur API opérationnel et prêt à l'emploi.\n")
     else:
-        print(f"👉 Action requise : configurez PRO_WEB_API_KEY ou lancez '{env.PY_CMD} ppl.py login'.\n")
+        print("👉 Action requise : renseignez PRO_WEB_API_KEY dans votre fichier de configuration local.\n")
 
 
 def build_rules(clean_domain: str, partner_id: int, site_type: str = "STATIC", duplicate_pairs: list = None) -> str:
@@ -1203,8 +1057,7 @@ def write_site_rules(sitedir: Path, info: dict) -> None:
                 ],
                 "deny": [
                     "Bash(script *)", "Bash(*xargs*)", "Bash(*expect*)", "Bash(*unbuffer*)", "Bash(*tmux*)",
-                    "Read(~/.pro-web-static/**)", "Bash(*token.json*)", "Bash(*.pro-web-static*)",
-                    "Bash(curl*pro-web.propulse-lab.com*)", "Bash(python*-c*)",
+                    "Bash(python*-c*)",
                     "Edit(*.py)", "Edit(**/*.py)", "Write(*.py)", "Write(**/*.py)",
                     "Edit(**/*.sh)", "Write(**/*.sh)", "Bash(*.sh*)", "Bash(perl*)",
                     "Bash(node*-e*)", "Bash(ruby*)", "Edit(.claude/**)", "Write(.claude/**)"
@@ -1274,7 +1127,7 @@ def _emit_telemetry(op: str, domain: str = None, duration_ms: int = 0, status: s
             if agy_dir.exists():
                 target = str(agy_dir / "briques_metrics.jsonl")
             else:
-                target = str(TOKEN_PATH.parent / "briques_metrics.jsonl")
+                target = str(WORKSPACE / ".pro-pilot" / "briques_metrics.jsonl")
         tpath = Path(target)
         tpath.parent.mkdir(parents=True, exist_ok=True)
         entry = {
@@ -1286,7 +1139,7 @@ def _emit_telemetry(op: str, domain: str = None, duration_ms: int = 0, status: s
             "status": status,
             "error_reason": error_reason,
         }
-        with _REFRESH_LOCK:
+        with _TELEMETRY_LOCK:
             with open(tpath, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception:
@@ -1364,6 +1217,21 @@ def main():
     p.add_argument("key")
     add_go(p)
     p.set_defaults(func=cmd_sethome)
+
+    p = add_sub("import-url", "Scrape une URL externe (originalUrl) pour l'importer sur Pro Web (upload-page)")
+    add_domain(p)
+    p.add_argument("original_url", help="URL externe source (ex. https://account.lpages.co/slug/)")
+    p.add_argument("--key", required=True, help="clé cible sur Pro Web (ex. pages/mon-slug)")
+    p.add_argument("--subtype", default="PAGE:LEADGEN", help="sous-type PAGE (défaut : PAGE:LEADGEN)")
+    p.add_argument("--indexing", action="store_true", help="activer l'indexation SEO (hasIndexing)")
+    add_go(p)
+    p.set_defaults(func=cmd_import_url)
+
+    p = add_sub("reload-page", "Recharge le HTML d'un objet PAGE depuis son originalUrl")
+    add_domain(p)
+    p.add_argument("object_id", help="identifiant MongoDB de l'objet (_id)")
+    add_go(p)
+    p.set_defaults(func=cmd_reload_page)
 
     args = ap.parse_args()
     t0 = time.monotonic()
