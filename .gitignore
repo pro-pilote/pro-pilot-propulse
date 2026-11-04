@@ -3,8 +3,6 @@ node_modules/
 __pycache__/
 *.pyc
 .pro-pilot/
-rendered/
-RULES.md
 dist/
 backups/
 sites/

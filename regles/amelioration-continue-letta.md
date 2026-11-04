@@ -13,9 +13,9 @@ Déclenche cette procédure dès que l'utilisateur :
 | Nature de la correction du partenaire | Fichier cible dans `pro-pilot-<partenaire>` |
 |---|---|
 | Erreur technique ou piège commis par l'IA sur un outil | `outils/<nom-outil>/erreurs-connues.md` |
-| Variable technique manquante ou erronée (GTM, pixel, domaine, ID) | `outils/<nom-outil>/variables.md` |
+| Variable technique manquante ou erronée (GTM, domaine, `websiteId`) | `outils/<nom-outil>/variables.md` |
 | Particularité d'un site ou règle métier sur un outil | `outils/<nom-outil>/specificites.md` |
-| Charte graphique, couleur, typographie ou composant visuel d'un produit | `donnees-business/<sku>/design-system.md` |
+| Charte graphique, couleur, typographie ou composant visuel | `donnees-business/design-system.md` |
 | Offre, tarif, promesse, FAQ ou mention légale d'un produit | `donnees-business/<sku>/fiche-produit.md` |
 
 ## 3. Remontée sur le dépôt du partenaire (Issue GitHub)
@@ -28,7 +28,7 @@ Déclenche cette procédure dès que l'utilisateur :
      - Contexte / Demande initiale
      - Ce que l'IA avait généré par erreur
      - La règle exacte à retenir
-     - Le chemin du fichier cible (ex. `outils/pro-web-page-creator/erreurs-connues.md`)
+     - Le chemin du fichier cible (ex. `outils/pro-web-uploader/erreurs-connues.md`)
      - Le bloc Markdown exact prêt à être ajouté dans ce fichier.
 
-> **Traitement par Propulse Lab** : En Phase 1, les retours sont relus et intégrés par batch par Guirec et Medi. En Phase 2, dès que le retour reçoit le label `validé`, une GitHub Action met à jour automatiquement le fichier cible dans le dépôt du partenaire.
+> **Traitement par Propulse Lab** : Les retours sont relus et intégrés dans le dépôt du partenaire (ou dans le socle commun `pro-pilot-propulse` lorsqu'ils concernent tous les partenaires).
