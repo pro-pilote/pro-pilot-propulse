@@ -6,14 +6,51 @@
 - **Contexte obligatoire avant génération HTML** :
   - Lire `donnees-business/<sku>/fiche-produit.md` et `donnees-business/design-system.md`.
   - Lire `outils/pro-web-uploader/variables.md`, `specificites.md` et `erreurs-connues.md`.
-  - **En-tête obligatoire sur toute Landing Page de conversion (`PAGE`)** : inclure `<script src="https://scripts.propulse-lab.com/headerTools.js" defer></script>` dans `<head>` afin de propager automatiquement les paramètres d'acquisition (`utm_*`, `leadcode`, `salescode`) vers le bon de commande.
 - **Convention de clé (`key`)** :
   - Le chemin de l'objet dans le bucket S3 du site est défini par `key` (sans slash initial, ex. `pages/mon-dossier`, `leads/inscription`, `cadeau/guide.pdf`).
   - L'URL publique finale de l'objet est `https://<domainName>/<key>`.
 
 ---
 
-## 2. Workflow Complet en 5 Étapes (Appels HTTP Directs)
+## 2. Scripts Pro Web Obligatoires & Catalogue `cdn.info-contenu.io`
+
+Contrairement à `upload-page` (qui exécute `cleanScripts` côté serveur), la publication directe d'un fichier HTML via `signed-url` → `PUT S3` → `upsert` envoie votre HTML **tel quel** sur S3. Vous devez donc inclure explicitement les scripts Pro Web dans votre HTML :
+
+### A. Les 3 blocs obligatoires sur toute Landing Page / Page de Vente (`PAGE`)
+1. **`headerTools.js` (dans `<head>`, juste avant `</head>`)** — fournit `getParameterByName(name)` avec échappement XSS :
+   ```html
+   <script src="https://cdn.info-contenu.io/assets/headerTools.js" type="text/javascript"></script>
+   ```
+2. **`preserveParamsV2.js` (dans `<head>` ou avant `</body>`)** — propage automatiquement tous les paramètres d'URL (`utm_*`, `leadcode`, `salescode`, `bdc`, `url2`/`bdc2`, `urlBdc`) sur tous les liens `<a href="...">` de la page (notamment les liens `https://secure.bdc.com` vers les bons de commande) :
+   ```html
+   <script src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>
+   ```
+3. **Google Tag Manager (`GTM-XXXXXXX`)** — utiliser l'identifiant GTM du site/partenaire indiqué dans `variables.md` (ou conserver intact celui de la page existante) :
+   - Dans `<head>` :
+     ```html
+     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+     })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
+     ```
+   - Juste après l'ouverture de `<body>` :
+     ```html
+     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+     ```
+
+### B. Autres scripts Pro Web (`https://cdn.info-contenu.io/assets/`) à conserver intacts s'ils sont présents
+| Script CDN Pro Web | Rôle technique |
+|---|---|
+| `https://cdn.info-contenu.io/assets/leadBox-v1.0.0.js` | Formulaire d'opt-in LeadBox (`initLeadBox()`, `new LeadForm('https://lead.<domaine>/api/lead/signup')`) |
+| `https://cdn.info-contenu.io/assets/email-autocomplete.js` | Autocomplétion des domaines d'email (`gmail.com`, `orange.fr`, `wanadoo.fr`, `bluewin.ch`, etc.) |
+| `https://cdn.info-contenu.io/assets/eventTriggerV1.js` | Déclenchement d'événements d'inscription (`EventTriggerClass`) |
+| `https://cdn.info-contenu.io/assets/redirect-v1.0.0.js` | Redirection A/B test (`ABTestRedirect`) préservant `leadcode` et `salescode` |
+| `https://cdn.info-contenu.io/assets/lead/assets/tel-input/js/intlTelInput.js` | Validation de numéro de téléphone mobile avec indicatif pays (+ `css/intlTelInput.css` et `js/utils.js`) |
+
+---
+
+## 3. Workflow Complet en 5 Étapes (Appels HTTP Directs)
 
 ### Étape 1 — Contrôle pré-vol & Détection de collision (`GET /objects/list/{websiteId}`)
 Prendre le `websiteId` et le `partnerId` du domaine cible dans `outils/pro-web-uploader/variables.md`, puis lister les objets existants sur ce site :

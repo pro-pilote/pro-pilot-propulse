@@ -6,11 +6,12 @@
   2. La validation locale de l'aperçu par l'utilisateur (ou la vérification `curl -sI` de l'`originalUrl` pour un import).
   3. **L'accord explicite de l'utilisateur dans le chat** en précisant le domaine cible, le `websiteId` correspondant et la `key` exacte avant d'exécuter les requêtes HTTP d'écriture.
 
-## 2. Protection des Conteneurs Critiques (Formulaires, Tracking & `headerTools.js`)
-- Lors de la modification d'une page existante, il est **strictement interdit** de supprimer ou d'altérer :
-  - Le script `<script src="https://scripts.propulse-lab.com/headerTools.js" defer></script>` (indispensable à la transmission des paramètres vers le bon de commande),
-  - Les formulaires d'inscription (`<form>`), leurs champs cachés (`<input type="hidden">`) et leurs attributs `action` / `method`,
-  - Les scripts Google Tag Manager (`GTM-XXXXXXX`) et le pied de page légal (Mentions légales, CGV, Politique de confidentialité).
+## 2. Protection des Scripts Pro Web (`headerTools.js`, `preserveParamsV2.js`, `GTM`, `leadBox`)
+- Toute page HTML (`PAGE`) générée ou modifiée doit inclure ou conserver intacts les scripts officiels Pro Web (`https://cdn.info-contenu.io/assets/`) :
+  - `<script src="https://cdn.info-contenu.io/assets/headerTools.js" type="text/javascript"></script>` (lecture sécurisée des paramètres d'URL via `getParameterByName`),
+  - `<script src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>` (propagation automatique des paramètres `utm_*`, `leadcode`, `salescode`, `bdc`, `url2`/`bdc2`, `urlBdc` vers les liens et bons de commande `https://secure.bdc.com`),
+  - Les scripts Google Tag Manager (`GTM-XXXXXXX` dans `<head>` et `<noscript>` dans `<body>`),
+  - Les scripts de formulaires d'opt-in (`https://cdn.info-contenu.io/assets/leadBox-v1.0.0.js`, `email-autocomplete.js`, `eventTriggerV1.js`, `redirect-v1.0.0.js`, `intlTelInput.js`), les balises `<form>` et le pied de page légal (Mentions légales, CGV, Politique de confidentialité).
 
 ## 3. Sécurité des Secrets & du Socle `.pro-pilot/`
 - Ne jamais committer ni afficher en clair le fichier `.env` ou la clé `PRO_WEB_API_KEY`.
