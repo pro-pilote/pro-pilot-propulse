@@ -3,10 +3,11 @@
 ## 1. Périmètre & Contrat Métier
 - **Rôle** : **Scraper une URL externe** (`originalUrl`, ex. une page Leadpages `https://<account>.lpages.co/<slug>/`) afin de l'importer automatiquement sur un site Pro Web en tant qu'objet `type: "PAGE"` (`key: "pages/<slug>"`).
 - **Ce que fait le backend Pro Web lors de l'import (`objects/pageCreator.ts`)** :
-  1. Télécharge le HTML de `originalUrl` (`minifyPage`), passe `<html lang="en">` en `<html lang="fr">`, supprime les metas/scripts analytics Leadpages et exécute `cleanScripts` (qui injecte `headerTools.js`).
-  2. Injecte le `customDom` du site (`website.pagesCustomDom` : `head`, `body`, `footer`) s'il est configuré.
+  1. Télécharge le HTML de `originalUrl` (`minifyPage`), passe `<html lang="en">` en `<html lang="fr">`, supprime les metas/scripts analytics Leadpages et exécute `cleanScripts` (qui injecte `<script src="https://cdn.info-contenu.io/assets/headerTools.js" type="text/javascript"></script>` avant `</head>` et nettoie les anciennes fonctions inline `getParameterByName`).
+  2. Injecte le `customDom` du site (`website.pagesCustomDom` : `head`, `body`, `footer`, contenant notamment le snippet GTM du site lorsqu'il est configuré dans Pro Web).
   3. **Images (`getImages`)** : supprime le dossier S3 `<key>_assets/img`, télécharge chaque balise `<img src="...">` (hors SVG data-URI), génère les variantes redimensionnées (`320, 460, 720, 910, 1200, 2500 px`), les pousse sur S3 dans `<key>_assets/img/` et réécrit les attributs `src` et `srcset`. *(Les `background-image: url(...)` CSS ne sont pas rapatriées).*
   4. Téléverse le HTML final sur S3 (`uploadHtmlPage`), met à jour MongoDB (`upsertObject`) et purge CloudFront (`/<key>` et `/<key>_assets/*`).
+  > **Note sur `preserveParamsV2.js`** : `cleanScripts` injecte automatiquement `https://cdn.info-contenu.io/assets/headerTools.js`, mais **pas** `https://cdn.info-contenu.io/assets/preserveParamsV2.js`. Si la page externe pointe vers un bon de commande (`https://secure.bdc.com` ou BDC partenaire), vérifiez que `<script src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>` est bien présent dans la page source (ou ajoutez-le).
 - **Nature asynchrone (`InvocationType: Event`)** :
   - `POST /objects/upload-page` et `POST /objects/{objectId}/reload-page` déclenchent la Lambda `page-creator` de manière **asynchrone**.
   - La réponse HTTP `200 {"status": true}` signifie uniquement que **la tâche est acceptée en file d'attente**, et **non** que la page est déjà publiée. Il est donc obligatoire d'exécuter l'Étape 1 (contrôle de `originalUrl`) avant l'appel et l'Étape 4 (polling & vérification) après l'appel.
