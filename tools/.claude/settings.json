@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(.pro-pilot/rendered/**)",
+      "Read(../../.pro-pilot/rendered/**)"
+    ],
+    "ask": [
+      "Bash(*--go*)",
+      "Bash(*--g*)"
+    ],
+    "deny": [
+      "Bash(script *)",
+      "Bash(*xargs*)",
+      "Bash(*expect*)",
+      "Bash(*unbuffer*)",
+      "Bash(*tmux*)",
+      "Read(~/.pro-web-static/**)",
+      "Bash(*token.json*)",
+      "Bash(*.pro-web-static*)",
+      "Bash(curl*pro-web.propulse-lab.com*)",
+      "Bash(python*-c*)",
+      "Edit(*.py)",
+      "Edit(**/*.py)",
+      "Write(*.py)",
+      "Write(**/*.py)",
+      "Edit(**/*.sh)",
+      "Write(**/*.sh)",
+      "Bash(*.sh*)",
+      "Bash(perl*)",
+      "Bash(node*-e*)",
+      "Bash(ruby*)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+      "Edit(.pro-pilot/**)",
+      "Write(.pro-pilot/**)",
+      "Read(.pro-pilot/.git/**)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(~/.ssh/**)"
+    ]
+  }
+}

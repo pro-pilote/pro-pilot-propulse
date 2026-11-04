@@ -42,8 +42,9 @@ except ImportError:
 BASE_URL = f"https://{env.DOMAIN}"
 TOKEN_PATH = env.TOKEN_PATH
 BASE = Path(__file__).resolve().parent
-SITES = BASE / "sites"
-CACHE = BASE / ".cache.json"
+WORKSPACE = Path(os.environ.get("PPL_WORKSPACE") or os.getcwd()).resolve()
+SITES = WORKSPACE / "sites"
+CACHE = WORKSPACE / ".cache.json"
 MANIFEST = ".ppl-manifest.json"
 PUSH_WORKERS = 8
 
@@ -105,8 +106,9 @@ def sha(b):
 
 def confirm(msg):
     try:
-        return input(f"{msg} [oui/non] ").strip().lower() in ("oui", "o", "yes", "y")
-    except EOFError:
+        ans = input("Tapez OUI pour confirmer le déploiement en PRODUCTION : ").strip()
+        return ans == "OUI"
+    except (EOFError, KeyboardInterrupt):
         return False
 
 
@@ -116,11 +118,8 @@ def gate(args, dry_msg, confirm_msg):
     if not args.go:
         print(f"\n[DRY-RUN] {dry_msg}")
         return False
-    if getattr(args, "yes", False):
-        print(f"\n🚀 [CONFIRMATION AGENT] Action approuvée via --yes. Publication en cours...")
-        return True
     if args.go and not sys.stdin.isatty():
-        die("Publication en production interdite en mode non-interactif (TTY requis). Lancez la commande directement dans votre terminal ou utilisez --yes avec l'accord explicite de l'utilisateur.")
+        die("Publication en production interdite en mode non-interactif (TTY requis). Lancez la commande directement dans votre terminal.")
     if not confirm(f"\n{confirm_msg}"):
         print("Annulé.")
         return False
@@ -1022,14 +1021,14 @@ Quand tu génères du code HTML, CSS ou JS pour ce site :
 1. **Édition du Code ou Remplacement Multi-Fichiers** :
    - Modifie directement les fichiers locaux (ex: `index.html`) en fournissant toujours le code HTML complet.
    - Pour remplacer une URL ou un texte sur toutes les pages du site d'un coup (sans toucher aux PDF ni aux images) :
-     `python3 ppl.py static replace {clean_domain} <ancien_texte> <nouveau_texte> --go --yes`
+     `python3 ppl.py static replace {clean_domain} <ancien_texte> <nouveau_texte> --go`
 2. **Contrôle Pré-vol (Dry-Run)** :
    - Lance le contrôle pré-vol : `python3 ppl.py static push {clean_domain}`
    - Présente le récapitulatif des fichiers modifiés à l'utilisateur dans le chat.
 3. **Publication en Production (Sur Accord de l'Utilisateur)** :
    - Dès que l'utilisateur valide dans le chat (ex: "go", "publie", "oui"), exécute :
-     `python3 ppl.py static push {clean_domain} --go --yes`
-   - Le flag `--yes` confirme l'approbation explicite de l'utilisateur dans le chat.
+     `python3 ppl.py static push {clean_domain} --go`
+   - L'utilisateur tape OUI pour confirmer la mise en production.
 
 ---
 
@@ -1049,7 +1048,7 @@ Quand tu génères du code HTML, CSS ou JS pour ce site :
 
 ### 4. Sécurité & Approbation Chat
 - L'agent exécute les commandes à la place de l'utilisateur.
-- L'agent ne doit lancer `--go --yes` qu'après approbation explicite de l'utilisateur dans la conversation chat.
+- L'agent ne doit lancer `--go` qu'après approbation explicite de l'utilisateur dans la conversation chat.
 """
 
 
@@ -1084,7 +1083,7 @@ def write_site_rules(sitedir: Path, info: dict) -> None:
         settings_path.write_text(json.dumps({
             "permissions": {
                 "ask": [
-                    "Bash(*--go*)", "Bash(*--g*)", "Bash(*--yes*)", "Bash(*--y*)"
+                    "Bash(*--go*)", "Bash(*--g*)"
                 ],
                 "deny": [
                     "Bash(script *)", "Bash(*xargs*)", "Bash(*expect*)", "Bash(*unbuffer*)", "Bash(*tmux*)",
@@ -1196,7 +1195,6 @@ def main():
 
     def add_go(p):
         p.add_argument("--go", action="store_true", help="publier en PROD (sinon dry-run)")
-        p.add_argument("--yes", "-y", action="store_true", help="confirmer sans prompt interactif TTY (pour les agents IA autorisés par l'utilisateur)")
 
     p = add_sub("doctor", "Diagnostic complet de l'OS, de la machine et du token")
     p.set_defaults(func=cmd_doctor)
