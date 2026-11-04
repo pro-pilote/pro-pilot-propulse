@@ -1,14 +1,13 @@
 # Garde-Fous d'Exécution & Sécurité de Publication
 
 ## 1. Aucune mise en production sans validation humaine
-- Toute action qui modifie un site en ligne (`./ppl static push <domaine> --go`) exige :
-  1. Un aperçu local préalable validé par le partenaire,
-  2. Une confirmation physique explicite de l'utilisateur dans son terminal.
-- L'assistant IA ne doit jamais tenter de contourner cette confirmation.
+- Toute action qui publie ou modifie un objet en ligne sur l'API Pro Web (`POST /objects/upsert`, `POST /objects/upload-page`, `POST /objects/{id}/reload-page`, `DELETE /objects`) exige :
+  1. Une prévisualisation locale préalable validée par le partenaire (pour toute création/modification HTML),
+  2. Un accord explicite de l'utilisateur dans le chat avant d'exécuter l'appel API de publication.
 
 ## 2. Protection des identifiants et secrets
-- Ne jamais écrire de mot de passe, clé d'API ou token personnel dans un fichier du dépôt Git ou dans un ticket de feedback.
-- Les accès locaux sont stockés uniquement dans la configuration locale de l'ordinateur de l'utilisateur.
+- Ne jamais écrire la clé `PRO_WEB_API_KEY` dans un fichier suivi par Git ou dans une Issue GitHub.
+- La clé `PRO_WEB_API_KEY` reste exclusivement dans le fichier `.env` local (ignoré par `.gitignore`).
 
-## 3. Respect des scripts `/pro-tools`
-- Ne jamais modifier le code des scripts situés dans `tools/`. Utilise uniquement les commandes documentées dans `outils/`.
+## 3. Cloisonnement du socle `.pro-pilot/`
+- Ne jamais modifier les fichiers situés dans `.pro-pilot/`. Pour proposer une amélioration ou signaler une erreur, ouvrir une Issue GitHub conformément à `regles/amelioration-continue-letta.md`.

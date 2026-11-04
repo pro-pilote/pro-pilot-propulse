@@ -1,16 +1,17 @@
 # Getting Started — Starter Pack Pro-Pilot
 
-Bienvenue dans **Pro-Pilot**. Ce dossier permet à votre assistant IA (Claude Desktop, Claude Code, Cursor, Codex, Antigravity, Grok, ChatGPT) de connaître votre métier, vos produits et d'exécuter vos actions en toute sécurité.
+Bienvenue dans **Pro-Pilot**. Ce dossier permet à votre assistant IA (Claude Code, Cursor, ChatGPT, Grok, Antigravity) de connaître votre métier, vos produits et d'exécuter vos actions sur Pro Web via l'API publique en toute sécurité.
 
-## Étape 0 — Prérequis Techniques (Automatique — 1 seule fois)
+## Étape 0 — Prérequis Techniques (1 seule fois)
 
-Les outils d'exécution locale nécessitent **Python 3.9+** et la librairie `requests` (voir [`prerequis.md`](./prerequis.md)).
-- **Avec le lanceur racine** (synchronise automatiquement le socle dans `.pro-pilot/` au premier appel) :
-  - **macOS / Linux** : `./ppl doctor`
-  - **Windows** : `ppl.cmd doctor`
-- **Installation rapide de `requests` si manquant** :
-  - **macOS / Linux** : `python3 -m pip install -r .pro-pilot/tools/requirements.txt`
-  - **Windows** : `py -3 -m pip install -r .pro-pilot\tools\requirements.txt`
+1. Créez un fichier `.env` à la racine de votre dépôt partenaire avec la clé API fournie par Propulse Lab :
+   ```env
+   PRO_WEB_API_KEY=votre_cle_api_ici
+   ```
+2. Votre assistant IA synchronise automatiquement le socle de règles dans `.pro-pilot/` (ignoré par Git) via :
+   ```bash
+   [ -d .pro-pilot ] && git -C .pro-pilot pull --ff-only || git clone --depth 1 https://github.com/pro-pilote/pro-pilot-propulse.git .pro-pilot
+   ```
 
 ## Étape 1 — Premier lancement (Onboarding)
 
@@ -28,4 +29,4 @@ Exprimez simplement votre demande en langage naturel et glissez vos pièces join
 - *« Crée une page HTML de présentation à partir de ce document et publie cet objet sur Pro Web. »*
 - *« Importe cette URL Leadpages sur notre site Pro Web. »*
 
-Votre IA consulte automatiquement le routeur [`ROUTER.md`](../ROUTER.md), charge les fiches de votre dépôt partenaire et exécute les outils nécessaires.
+Votre IA consulte automatiquement le routeur [`ROUTER.md`](../ROUTER.md), charge les fiches de votre dépôt partenaire et appelle l'API Pro Web après votre validation.
