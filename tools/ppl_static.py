@@ -27,6 +27,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -71,11 +72,27 @@ FORBIDDEN_VIDEO_EXTS = {".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v", ".ogv"}
 MAX_FILE_SIZE = 20_000_000  # 20 Mo (conforme WebsiteAddObject.vue:399, 825)
 
 
-def content_meta(key):
+def content_meta(key, content=None, existing_record=None):
     ext = Path(key).suffix.lower()
     if ext in FORBIDDEN_VIDEO_EXTS:
         die(f"Fichier vidéo non autorisé sur STATIC ({key}). Les vidéos doivent être hébergées sur Pro-Vidéo.")
-    return CONTENT_TYPES.get(ext, ("application/octet-stream", "DOCUMENT:TEXT"))
+    if ext in CONTENT_TYPES:
+        return CONTENT_TYPES[ext]
+    if isinstance(content, (bytes, bytearray)):
+        if content.startswith(b"%PDF-"):
+            return ("application/pdf", "DOCUMENT:PDF")
+        if content.startswith(b"\x89PNG\r\n\x1a\n"):
+            return ("image/png", "DOCUMENT:IMAGE")
+        if content.startswith(b"\xff\xd8\xff"):
+            return ("image/jpeg", "DOCUMENT:IMAGE")
+        head = content[:512].lstrip().lower()
+        if head.startswith(b"<!doctype html") or head.startswith(b"<html") or b"<head" in head or b"<body" in head:
+            return ("text/html; charset=utf-8", "DOCUMENT:TEXT")
+    if existing_record and existing_record.get("subtype") == "DOCUMENT:PDF":
+        return ("application/pdf", "DOCUMENT:PDF")
+    if existing_record and existing_record.get("type") == "PAGE":
+        return ("text/html; charset=utf-8", existing_record.get("subtype"))
+    return ("application/octet-stream", "DOCUMENT:TEXT")
 
 
 def die(msg):
@@ -159,6 +176,18 @@ def _refresh_token(epoch_seen):
             return True  # déjà rafraîchi par un autre thread pendant l'attente du verrou
         try:
             if env.get_auth_strategy() == "chrome_keychain":
+                try:
+                    import proweb_auth
+                    payload = proweb_auth.fetch_token()
+                    if payload.get("bearer") and payload.get("bearer") != (_TOKEN or {}).get("bearer"):
+                        write_json(TOKEN_PATH, payload)
+                        _TOKEN = payload
+                        _TOKEN_EPOCH += 1
+                        return True
+                except Exception:
+                    pass
+                if not sys.stdin.isatty():
+                    return False
                 input(f"\n⏸  Token expiré. Recharge {BASE_URL} dans Chrome (déconnecte-toi puis "
                       f"reconnecte-toi si le simple rechargement ne suffit pas), puis appuie sur "
                       f"Entrée pour réessayer (Ctrl+C pour abandonner)… ")
@@ -174,6 +203,8 @@ def _refresh_token(epoch_seen):
                 _TOKEN_EPOCH += 1
                 return True
             else:
+                if not sys.stdin.isatty():
+                    return False
                 input(f"\n⏸  Token expiré. Lance '{env.PY_CMD} ppl.py login' dans un terminal séparé pour "
                       f"renouveler ton token, puis appuie sur Entrée pour continuer (Ctrl+C pour abandonner)… ")
                 tok = load_token()
@@ -356,10 +387,41 @@ def list_objects(info):
     return _items(data)
 
 
-def check_static(info):
-    if info.get("type") != "STATIC":
-        die(f"{info['domain']} est de type {info.get('type')} (pas STATIC) — "
-            f"cette boîte ne gère que les sites STATIC.")
+ALLOWED_NON_STATIC_PREFIXES = ("pages/", "leads/", "cadeau/")
+
+
+def is_static_site(info):
+    """Vérifie si le site est de type STATIC (ex: doc.propulse-lab.com, sites vitrines)."""
+    return (info.get("type") or "").upper() == "STATIC"
+
+
+def is_allowed_key(key):
+    """Vérifie si la clé commence par l'un des préfixes autorisés pour les sites non-STATIC."""
+    clean = key.lstrip("/")
+    return any(clean.startswith(p) for p in ALLOWED_NON_STATIC_PREFIXES)
+
+
+def check_key_allowed(info, key):
+    """Garde-fou : sur les sites non-STATIC, seules les pages /pages/, /leads/, /cadeau/ sont autorisées."""
+    if is_static_site(info):
+        return True
+    if not is_allowed_key(key):
+        die(f"❌ [VETO DOCTRINE GLOBALE] Site non-STATIC ({info.get('type')}) :\n"
+            f"   Le chemin '{key}' est interdit.\n"
+            f"   SEULES les pages commençant par /pages/, /leads/ ou /cadeau/ sont autorisées à la modification.")
+    return True
+
+
+def check_static(info, key=None):
+    """Garde-fou de type de site.
+    - STATIC : accès complet à l'ensemble des fichiers (ex: doc.propulse-lab.com).
+    - Non-STATIC (WORDPRESS, BLOG...) : restreint STRICTEMENT aux chemins /pages/, /leads/, /cadeau/.
+    """
+    if is_static_site(info):
+        return True
+    if key is not None:
+        check_key_allowed(info, key)
+    return True
 
 
 def check_html_integrity(key, content):
@@ -388,29 +450,58 @@ def check_html_integrity(key, content):
                 f"IA ('{placeholder}'). Le fichier doit être fourni complet. Déploiement bloqué.")
 
 
-def deploy_file(info, key, content):
-    """signed-url -> PUT S3 -> upsert."""
+def deploy_file(info, key, content, existing_record=None, extra_aliases=None):
+    """signed-url -> PUT S3 -> upsert (préserve type=PAGE et synchronise les alias clean-URL)."""
     if len(content) > MAX_FILE_SIZE:
         die(f"Fichier '{key}' trop lourd ({len(content) / 1_000_000:.1f} Mo > 20 Mo max autorisé sur STATIC).")
 
     # Garde-fou mécanique anti-troncature pour les pages HTML (défense en profondeur)
     check_html_integrity(key, content)
 
-    ct, subtype = content_meta(key)
+    ct, subtype = content_meta(key, content, existing_record)
     wid, partner = info["websiteId"], info["partner"]
-    su = api("POST", "/api/objects/signed-url", partner,
-             {"websiteId": wid, "contentType": ct, "fileName": key, "key": key})
-    signed = su.get("data") if isinstance(su, dict) else su
-    if not signed:
-        die(f"pas de signed-url pour {key}: {su}")
-    # ⚠️ le PUT S3 signé n'accepte QUE Content-Type en header (le reste est
-    # déjà signé dans la query) — ajouter un header type x-amz-acl → 403.
-    r = requests.put(signed, data=content, headers={"Content-Type": ct}, timeout=180)
-    if not r.ok:
-        die(f"PUT S3 {key} → HTTP {r.status_code} {r.text[:300]}")
-    api("POST", "/api/objects/upsert", partner,
-        {"websiteId": wid, "originalFileName": os.path.basename(key),
-         "subtype": subtype, "type": "DOCUMENT", "key": key})
+
+    targets = [key] + [a for a in (extra_aliases or []) if a != key]
+    for target_key in targets:
+        su = api("POST", "/api/objects/signed-url", partner,
+                 {"websiteId": wid, "contentType": ct, "fileName": os.path.basename(target_key), "key": target_key})
+        signed = su.get("data") if isinstance(su, dict) else su
+        if not signed:
+            die(f"pas de signed-url pour {target_key}: {su}")
+        # ⚠️ le PUT S3 signé n'accepte QUE Content-Type en header (le reste est
+        # déjà signé dans la query) — ajouter un header type x-amz-acl → 403.
+        r = requests.put(signed, data=content, headers={"Content-Type": ct}, timeout=180)
+        if not r.ok:
+            die(f"PUT S3 {target_key} → HTTP {r.status_code} {r.text[:300]}")
+
+        if existing_record and target_key == key and existing_record.get("type") == "PAGE":
+            upsert_body = {
+                "websiteId": wid,
+                "key": target_key,
+                "type": "PAGE",
+                "subtype": existing_record.get("subtype"),
+                "folder": existing_record.get("folder", "pages"),
+                "slug": existing_record.get("slug") or os.path.basename(target_key),
+                "originalFileName": existing_record.get("originalFileName") or os.path.basename(target_key),
+                "originalUrl": existing_record.get("originalUrl"),
+                "leadpageEditUrl": existing_record.get("leadpageEditUrl"),
+                "hasIndexing": existing_record.get("hasIndexing", False),
+                "emailOwner": existing_record.get("emailOwner"),
+                "emailLastUser": existing_record.get("emailLastUser"),
+            }
+            upsert_body = {k: v for k, v in upsert_body.items() if v is not None}
+        else:
+            upsert_body = {
+                "websiteId": wid,
+                "originalFileName": (existing_record.get("originalFileName") if (existing_record and target_key == key) else None) or os.path.basename(target_key),
+                "subtype": subtype,
+                "type": "DOCUMENT",
+                "key": target_key,
+            }
+            if "/" in target_key:
+                upsert_body["folder"] = target_key.rsplit("/", 1)[0]
+                upsert_body["slug"] = target_key.rsplit("/", 1)[1]
+        api("POST", "/api/objects/upsert", partner, upsert_body)
 
 
 # --- commandes -------------------------------------------------------------
@@ -422,6 +513,10 @@ def cmd_resolve(args):
 def cmd_ls(args):
     info = get_info(args)
     objs = list_objects(info)
+    if not is_static_site(info):
+        total_count = len(objs)
+        objs = [o for o in objs if is_allowed_key(o.get("key", ""))]
+        print(f"🧩 Site non-STATIC ({info.get('type')}) : affichage filtré sur /pages/, /leads/ et /cadeau/ ({len(objs)}/{total_count} objets)")
     print(f"{site_label(info)} — websiteId {info['websiteId']} · "
           f"partner {info['partner']} · type {info['type']} · {len(objs)} objets")
     for o in sorted(objs, key=lambda x: x["key"]):
@@ -433,9 +528,76 @@ def cmd_pull(args):
     info = get_info(args)
     check_static(info)
     objs = list_objects(info)
+    if not is_static_site(info):
+        total_count = len(objs)
+        objs = [o for o in objs if is_allowed_key(o.get("key", ""))]
+        print(f"🧩 Site non-STATIC ({info.get('type')}) : pull restreint aux chemins /pages/, /leads/ et /cadeau/ ({len(objs)}/{total_count} objets retenus).")
+        if not objs:
+            print("ℹ️  Aucune page trouvée sous /pages/, /leads/ ou /cadeau/ sur ce site.")
+    elif not getattr(args, "full", False):
+        before = len(objs)
+        objs = [o for o in objs if not o.get("key", "").startswith(("wp-content/uploads/", "wp-includes/"))]
+        if len(objs) < before:
+            print(f"ℹ️  {before - len(objs)} assets statiques WordPress (wp-content/uploads/, wp-includes/) ignorés par défaut (utilisez --full pour tout télécharger).")
+
+    # Filtrer les alias S3 Clean-URL redondants (<slug>, <slug>/index, <slug>/index/index.html)
+    # qui entreraient en collision fichier/dossier sur le système de fichiers local.
+    all_keys = {o["key"] for o in objs}
+    clean_url_aliases = {}
+    kept_objs = []
+    for o in objs:
+        k = o["key"]
+        if k.endswith("/index/index.html"):
+            base_idx = k[:-len("/index/index.html")] + "/index.html"
+            base_htm = k[:-len("/index/index.html")] + ".html"
+            if base_idx in all_keys or base_htm in all_keys:
+                if base_idx in all_keys:
+                    clean_url_aliases.setdefault(base_idx, []).append(k)
+                if base_htm in all_keys:
+                    clean_url_aliases.setdefault(base_htm, []).append(k)
+                continue
+        if k.endswith("/index"):
+            base_idx = k + ".html"
+            base_htm = k[:-len("/index")] + ".html"
+            if base_idx in all_keys or base_htm in all_keys:
+                if base_idx in all_keys:
+                    clean_url_aliases.setdefault(base_idx, []).append(k)
+                if base_htm in all_keys:
+                    clean_url_aliases.setdefault(base_htm, []).append(k)
+                continue
+        if not k.endswith(".html") and (f"{k}.html" in all_keys or f"{k}/index.html" in all_keys):
+            if f"{k}.html" in all_keys:
+                clean_url_aliases.setdefault(f"{k}.html", []).append(k)
+            if f"{k}/index.html" in all_keys:
+                clean_url_aliases.setdefault(f"{k}/index.html", []).append(k)
+            continue
+        kept_objs.append(o)
+
+    kept_keys = {o["key"] for o in kept_objs}
+    prefix_conflicts = {k for k in kept_keys if any(other.startswith(k + "/") for other in kept_keys)}
+
+    # Détection des casses multiples sur dossiers ou clés (systèmes de fichiers insensibles à la casse type APFS/NTFS)
+    dir_cases = {}
+    for k in kept_keys:
+        parts = k.split("/")[:-1]
+        for i in range(1, len(parts) + 1):
+            d = "/".join(parts[:i])
+            dir_cases.setdefault(d.lower(), set()).add(d)
+    mixed_dirs = [sorted(v) for v in dir_cases.values() if len(v) > 1]
+    if mixed_dirs:
+        print(f"ℹ️  {len(mixed_dirs)} dossier(s) en casse mixte détecté(s) sur S3 (normalisé via manifeste au push).")
+
     sitedir = site_dir(info)
     burl = base_url(info)
-    manifest = {"objects": {}}
+    manifest = {
+        "domain": info.get("domain"),
+        "websiteId": info.get("websiteId"),
+        "partnerId": info.get("partner"),
+        "url": info.get("url"),
+        "objects": {},
+        "clean_url_aliases": clean_url_aliases,
+    }
+    seen_lower_local = {}
     ok = 0
 
     def fetch(o):
@@ -446,23 +608,34 @@ def cmd_pull(args):
         return r.content
 
     with ThreadPoolExecutor(max_workers=PUSH_WORKERS) as pool:
-        futures = {pool.submit(fetch, o): o for o in objs}
+        futures = {pool.submit(fetch, o): o for o in kept_objs}
         for fut in as_completed(futures):
             o = futures[fut]
-            key = o["key"]
+            s3_key = o["key"]
+            local_key = f"{s3_key}.html" if s3_key in prefix_conflicts else s3_key
+            if local_key.lower() in seen_lower_local and seen_lower_local[local_key.lower()] != local_key:
+                print(f"  ⚠️  collision de casse sur '{local_key}' vs '{seen_lower_local[local_key.lower()]}' — suffixé localement")
+                local_key = f"{local_key}__case_{sha(s3_key.encode())[:6]}"
+            seen_lower_local[local_key.lower()] = local_key
             try:
                 content = fut.result()
             except Exception as e:
-                print(f"  ⚠️  skip {key} ({e})")
+                print(f"  ⚠️  skip {s3_key} ({e})")
                 continue
-            dest = sitedir / key
+            dest = sitedir / local_key
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(content)
-            manifest["objects"][key] = {"record": o, "sha256": sha(content)}
+            manifest["objects"][local_key] = {
+                "record": o,
+                "sha256": sha(content),
+                "sha256_lf": sha(content.replace(b"\r\n", b"\n")),
+                "s3_key": s3_key,
+            }
             ok += 1
-            print(f"  ↓ {key} ({len(content)} o)")
+            print(f"  ↓ {local_key} ({len(content)} o)")
 
     write_json(sitedir / MANIFEST, manifest)
+    write_site_rules(sitedir, info)
     print(f"\n✅ {ok} fichier(s) → {sitedir}")
     print("→ Ouvre Claude Code à la racine du kit pour éditer sites/<domaine>/, puis :")
     print(f"   python3 ppl_static.py preview {site_label(info)}")
@@ -479,16 +652,35 @@ def cmd_preview(args):
 
 
 def cmd_push(args):
-    info = get_info(args, fresh=True)
-    check_static(info)
+    local_mpath = (SITES / norm_domain(args.domain) / MANIFEST) if getattr(args, "domain", None) else None
+    if not getattr(args, "go", False) and local_mpath and local_mpath.exists():
+        mdata = read_json(local_mpath)
+        cached = load_cache().get(norm_domain(args.domain), {})
+        info = {
+            "domain": mdata.get("domain") or cached.get("domain") or norm_domain(args.domain),
+            "websiteId": mdata.get("websiteId") or cached.get("websiteId"),
+            "partner": mdata.get("partnerId") or cached.get("partner"),
+            "type": cached.get("type") or "STATIC",
+            "url": mdata.get("url") or cached.get("url") or f"https://{norm_domain(args.domain)}",
+        }
+        check_static(info)
+    else:
+        info = get_info(args, fresh=True)
+        check_static(info)
     sitedir = site_dir(info)
     mpath = sitedir / MANIFEST
     if not mpath.exists():
         die(f"pas de miroir local pour {info['domain']} — fais 'pull' d'abord.")
     manifest = read_json(mpath)
     objects = manifest["objects"]
+    clean_url_aliases = manifest.get("clean_url_aliases", {})
+
+    lower_to_manifest = {}
+    for mk in objects:
+        lower_to_manifest[mk.lower()] = mk
 
     local = {}
+    local_raw = {}
     TEXT_EXTENSIONS = {".html", ".css", ".js", ".json", ".txt", ".svg", ".xml"}
     EXCLUDED_NAMES = {MANIFEST, "RULES.md", "CLAUDE.md", "README.md"}
     for p in sitedir.rglob("*"):
@@ -497,14 +689,27 @@ def cmd_push(args):
             continue
         if any(part.startswith(".") for part in rel.parts):
             continue
-        data = p.read_bytes()
+        rel_str = "/".join(rel.parts)
+        canonical_key = lower_to_manifest.get(rel_str.lower(), rel_str)
+        raw_data = p.read_bytes()
+        local_raw[canonical_key] = raw_data
+        data = raw_data
         # Normalisation automatique des retours chariot Windows (CRLF -> LF) pour fiabiliser le hash SHA-256
         if p.suffix.lower() in TEXT_EXTENSIONS and b"\r\n" in data:
             data = data.replace(b"\r\n", b"\n")
-        local["/".join(rel.parts)] = data
+        local[canonical_key] = data
+
+    def is_changed(k):
+        rec_entry = objects[k]
+        if sha(local_raw[k]) == rec_entry.get("sha256"):
+            return False
+        expected_lf = rec_entry.get("sha256_lf") or rec_entry.get("sha256")
+        if sha(local[k]) == expected_lf:
+            return False
+        return True
 
     new = [k for k in local if k not in objects]
-    changed = [k for k in local if k in objects and sha(local[k]) != objects[k]["sha256"]]
+    changed = [k for k in local if k in objects and is_changed(k)]
     deleted = [k for k in objects if k not in local]
 
     print(f"Site : {info['domain']} · websiteId {info['websiteId']} · partner {info['partner']}")
@@ -525,13 +730,15 @@ def cmd_push(args):
 
     to_publish = new + changed
 
-    # Contrôles de validation pré-vol (taille, formats interdits et intégrité HTML) dès le dry-run
+    # Contrôles de validation pré-vol (taille, formats interdits, périmètre doctrine et intégrité HTML) dès le dry-run
     for k in to_publish:
+        if not is_static_site(info):
+            check_key_allowed(info, k)
         if len(local[k]) > MAX_FILE_SIZE:
-            die(f"Fichier '{k}' trop lourd ({len(local[k]) / 1_000_000:.1f} Mo > 20 Mo max autorisé sur STATIC).")
+            die(f"Fichier '{k}' trop lourd ({len(local[k]) / 1_000_000:.1f} Mo > 20 Mo max autorisé).")
         ext = Path(k).suffix.lower()
         if ext in FORBIDDEN_VIDEO_EXTS:
-            die(f"Fichier vidéo non autorisé sur STATIC ({k}). Les vidéos doivent être hébergées sur Pro-Vidéo.")
+            die(f"Fichier vidéo non autorisé ({k}). Les vidéos doivent être hébergées sur Pro-Vidéo.")
         check_html_integrity(k, local[k])
 
     # Alerte de cohérence sur les paires de pages HTML doublons (ex: mentions-legales.html vs mentions-legales/index.html)
@@ -548,31 +755,46 @@ def cmd_push(args):
                 print(f"   Pensez à reporter la même modification sur '{folder_index}' pour éviter tout déphasage.")
 
     # Contrôle de dérive (drift detection) avant toute publication (exécuté dès le dry-run)
-    for key in changed:
-        u = f"{base_url(info)}/{key}"
+    def check_drift_one(key):
+        s3_key = objects[key].get("s3_key") or key
+        u = f"{base_url(info)}/{s3_key}"
         try:
             resp = requests.get(u, timeout=60, allow_redirects=False)
             if resp.status_code == 200:
                 remote_bytes = resp.content
                 remote_sha = sha(remote_bytes)
+                remote_lf_sha = sha(remote_bytes.replace(b"\r\n", b"\n"))
                 expected_sha = objects[key].get("sha256")
+                expected_lf_sha = objects[key].get("sha256_lf") or expected_sha
                 local_sha = sha(local[key])
-                if expected_sha and remote_sha != expected_sha:
-                    if remote_sha == local_sha:
+                if expected_sha and remote_sha != expected_sha and remote_lf_sha != expected_lf_sha:
+                    if remote_sha == local_sha or remote_lf_sha == local_sha:
                         # Le contenu distant correspond déjà à notre version locale (ex: échec d'upsert précédent)
-                        pass
-                    else:
-                        die(f"[CONFLIT DE CONCURRENCE] L'objet distant '{key}' a été modifié en production depuis votre dernier pull.\n"
-                            f"SHA distant: {remote_sha[:12]}... != SHA manifeste pull: {expected_sha[:12]}...\n"
-                            f"Re-pull requis avant publication.")
+                        return None
+                    return (
+                        f"[CONFLIT DE CONCURRENCE] L'objet distant '{s3_key}' a été modifié en production depuis votre dernier pull.\n"
+                        f"SHA distant: {remote_sha[:12]}... != SHA manifeste pull: {expected_sha[:12]}...\n"
+                        f"Re-pull requis avant publication."
+                    )
             elif resp.status_code in (404, 301):
-                die(f"[CONFLIT DE CONCURRENCE] L'objet distant '{key}' a été supprimé en production depuis votre dernier pull (statut HTTP {resp.status_code}). Re-pull requis.")
+                return f"[CONFLIT DE CONCURRENCE] L'objet distant '{s3_key}' a été supprimé en production depuis votre dernier pull (statut HTTP {resp.status_code}). Re-pull requis."
             elif resp.status_code != 200:
-                die(f"[CONTRÔLE DE DÉRIVE IMPOSSIBLE] '{key}' a renvoyé HTTP {resp.status_code} — re-pull ou relance.")
+                return f"[CONTRÔLE DE DÉRIVE IMPOSSIBLE] '{s3_key}' a renvoyé HTTP {resp.status_code} — re-pull ou relance."
         except requests.RequestException as e:
-            die(f"[CONTRÔLE DE DÉRIVE ÉCHOUÉ] Erreur réseau lors de la vérification de '{key}' ({e}) — relancez.")
+            return f"[CONTRÔLE DE DÉRIVE ÉCHOUÉ] Erreur réseau lors de la vérification de '{s3_key}' ({e}) — relancez."
+        return None
+
+    if changed:
+        with ThreadPoolExecutor(max_workers=PUSH_WORKERS) as pool:
+            for err in pool.map(check_drift_one, changed):
+                if err:
+                    die(err)
 
     # Conflit sur les nouveaux fichiers (ne doivent pas déjà exister en prod avec un contenu divergent)
+    if new and getattr(args, "go", False):
+        remote_existing_keys = {o.get("key") for o in list_objects(info)}
+    else:
+        remote_existing_keys = set(objects.keys())
     for key in new:
         u = f"{base_url(info)}/{key}"
         try:
@@ -584,6 +806,8 @@ def cmd_push(args):
                     pass
                 else:
                     die(f"[CONFLIT DE CRÉATION] La clé '{key}' déclarée comme nouvelle existe déjà en production — faites un pull pour la récupérer.")
+            elif resp.status_code == 500 and key not in remote_existing_keys:
+                print(f"  ℹ️  Note: '{key}' absent de list_objects (Edge HTTP 500 ignoré).")
             elif resp.status_code not in (404, 301):
                 die(f"[CONTRÔLE DE DÉRIVE IMPOSSIBLE] Nouveau fichier '{key}' a renvoyé HTTP {resp.status_code} (attendu: 404/301).")
         except requests.RequestException as e:
@@ -594,17 +818,40 @@ def cmd_push(args):
         return
 
     failed = []
+    claimed_aliases = set()
+
+    def build_deploy_args(k):
+        s3_key = objects.get(k, {}).get("s3_key") or k
+        rec = objects.get(k, {}).get("record")
+        aliases = []
+        for a in clean_url_aliases.get(k, []):
+            if a not in claimed_aliases:
+                claimed_aliases.add(a)
+                aliases.append(a)
+        return s3_key, rec, aliases
+
+    deploy_plan = {k: build_deploy_args(k) for k in to_publish}
+
     with ThreadPoolExecutor(max_workers=PUSH_WORKERS) as pool:
-        futures = {pool.submit(deploy_file, info, key, local[key]): key for key in to_publish}
+        futures = {
+            pool.submit(deploy_file, info, deploy_plan[key][0], local[key], deploy_plan[key][1], deploy_plan[key][2]): key
+            for key in to_publish
+        }
         for fut in as_completed(futures):
             key = futures[fut]
+            s3_key, rec, _ = deploy_plan[key]
             try:
                 fut.result()
             except SystemExit as e:
                 failed.append(key)
                 print(f"  ❌ {key} — {e}")
                 continue
-            objects[key] = {"record": {"key": key}, "sha256": sha(local[key])}
+            objects[key] = {
+                "record": rec or {"key": s3_key},
+                "sha256": sha(local[key]),
+                "sha256_lf": sha(local[key].replace(b"\r\n", b"\n")),
+                "s3_key": s3_key,
+            }
             # Persistance immédiate : si un fichier suivant échoue, on ne perd
             # pas la trace de ceux déjà publiés (pas de republication inutile).
             write_json(mpath, manifest)
@@ -629,8 +876,9 @@ def cmd_add(args):
     if not src.exists():
         die(f"fichier introuvable : {src}")
     key = args.key or src.name
+    check_key_allowed(info, key)
     content = src.read_bytes()
-    ct, _ = content_meta(key)
+    ct, _ = content_meta(key, content)
     print(f"add : {src}  →  {info['domain']} / {key}  ({len(content)} o, {ct})")
     if not gate(args, "Ajoute --go pour publier.", "Publier en PROD ?"):
         return
@@ -645,6 +893,7 @@ def cmd_add(args):
 def cmd_rm(args):
     info = get_info(args, fresh=True)
     check_static(info)
+    check_key_allowed(info, args.key)
     rec = next((o for o in list_objects(info) if o["key"] == args.key), None)
     if not rec:
         die(f"objet '{args.key}' introuvable sur {info['domain']}")
@@ -658,6 +907,8 @@ def cmd_rm(args):
 def cmd_sethome(args):
     info = get_info(args, fresh=True)
     check_static(info)
+    if not is_static_site(info):
+        die(f"❌ Impossible de redéfinir l'accueil sur un site non-STATIC ({info.get('type')}).")
     key = args.key
     localf = site_dir(info) / key
     if localf.exists():
@@ -724,6 +975,209 @@ def cmd_doctor(args):
         print("✅ Connecteur opérationnel et prêt à l'emploi.\n")
 
 
+def build_rules(clean_domain: str, partner_id: int, site_type: str = "STATIC", duplicate_pairs: list = None) -> str:
+    """Génère le contenu de RULES.md / CLAUDE.md pour un site statique ou les pages autorisées d'un site non-STATIC."""
+    dup_rules = ""
+    if duplicate_pairs:
+        dup_rules = (
+            f"\n### ⚠️ Règle Double Arborescence HTML ({len(duplicate_pairs)} pages détectées) :\n"
+            "Les sous-pages suivantes existent à la fois sous forme de dossier et de fichier .html :\n"
+            + "\n".join(f"  - /{p}/index.html ET /{p}.html" for p in duplicate_pairs)
+            + "\n👉 Si tu modifies l'une de ces pages, mets TOUJOURS à jour les deux fichiers de façon identique !\n"
+        )
+
+    if site_type == "STATIC":
+        arch_desc = "Site **statique pur** (HTML5, CSS, JS, images). Zéro WordPress, zéro CMS."
+        scope_section = ""
+    else:
+        arch_desc = f"Site **{site_type}** — Gestion restreinte aux pages `/pages/`, `/leads/` et `/cadeau/`."
+        scope_section = """
+### 🛑 RÈGLE ABSOLUE DE PÉRIMÈTRE (SITE NON-STATIC)
+- **SEULES les pages commençant par `/pages/`, `/leads/` ou `/cadeau/` sont vibecodables.**
+- Toute création ou modification d'un fichier en dehors de ces trois dossiers est strictement bloquée par le CLI pour protéger le Core WordPress.
+"""
+
+    return f"""# Consignes Assistant IA (Grok / ChatGPT / Claude / Cursor) — {clean_domain}
+
+> **Site** : {clean_domain} (Partner ID: {partner_id})
+> **Architecture** : {arch_desc}
+
+---
+
+## 🛑 RÈGLE D'OR POUR L'IA (GROK / CHATGPT) : ZÉRO TRONCATURE
+
+Quand tu génères du code HTML, CSS ou JS pour ce site :
+1. **INTERDICTION FORMELLE DE TRONQUER LE CODE** avec des commentaires du type :
+   - `<!-- rest of code unchanged -->`
+   - `<!-- reste du code inchangé -->`
+   - `<!-- same as before -->`
+   - `/* rest of code unchanged */`
+2. **FOURNIR LE FICHIER COMPLET** : Tout fichier HTML doit être fourni intégralement, de `<!DOCTYPE html>` jusqu'à `</html>`.
+   L'utilisateur travaille en remplacement complet dans son éditeur local. Un fichier tronqué détruirait la mise en page en production.
+
+---
+{scope_section}
+## 🔄 Workflow Autonome pour l'Agent IA (Grok / Cursor / Claude)
+
+1. **Édition du Code ou Remplacement Multi-Fichiers** :
+   - Modifie directement les fichiers locaux (ex: `index.html`) en fournissant toujours le code HTML complet.
+   - Pour remplacer une URL ou un texte sur toutes les pages du site d'un coup (sans toucher aux PDF ni aux images) :
+     `python3 ppl.py static replace {clean_domain} <ancien_texte> <nouveau_texte> --go --yes`
+2. **Contrôle Pré-vol (Dry-Run)** :
+   - Lance le contrôle pré-vol : `python3 ppl.py static push {clean_domain}`
+   - Présente le récapitulatif des fichiers modifiés à l'utilisateur dans le chat.
+3. **Publication en Production (Sur Accord de l'Utilisateur)** :
+   - Dès que l'utilisateur valide dans le chat (ex: "go", "publie", "oui"), exécute :
+     `python3 ppl.py static push {clean_domain} --go --yes`
+   - Le flag `--yes` confirme l'approbation explicite de l'utilisateur dans le chat.
+
+---
+
+## 5 Règles Techniques Essentielles
+
+### 1. Chemins d'Assets Statiques
+- Les images et styles sont servis depuis la racine : `/assets/images/...`, `/assets/css/...`.
+- Ne convertis jamais ces chemins en relatifs. Utilise `preview` pour tester en local.
+{dup_rules}
+### 2. Formats Autorisés & Interdiction Vidéo
+- Formats autorisés : HTML, CSS, JS, JSON, images WebP/PNG/JPG/SVG, PDF.
+- **Vidéos strictement interdites** sur STATIC : elles doivent être hébergées sur la plateforme Pro Video.
+- Taille max : 20 Mo par fichier.
+
+### 3. Navigation & Liens Internes
+- Liens internes toujours avec slash final : `href="/"`, `href="/<slug>/"`.
+
+### 4. Sécurité & Approbation Chat
+- L'agent exécute les commandes à la place de l'utilisateur.
+- L'agent ne doit lancer `--go --yes` qu'après approbation explicite de l'utilisateur dans la conversation chat.
+"""
+
+
+def write_site_rules(sitedir: Path, info: dict) -> None:
+    """Calcule les paires doublons récursivement et écrit RULES.md, CLAUDE.md et .claude/settings.json."""
+    if not sitedir.exists():
+        return
+    clean_domain = info.get("domain") or sitedir.name
+    partner_id = info.get("partner") or 0
+    site_type = info.get("type") or "STATIC"
+
+    duplicate_pairs = []
+    for idx in sorted(sitedir.rglob("index.html")):
+        rel_dir = idx.parent.relative_to(sitedir)
+        if not rel_dir.parts or any(part.startswith(".") for part in rel_dir.parts):
+            continue
+        rel_slug = "/".join(rel_dir.parts)
+        if (sitedir / f"{rel_slug}.html").exists():
+            duplicate_pairs.append(rel_slug)
+
+    rules_content = build_rules(clean_domain, partner_id, site_type, duplicate_pairs)
+    (sitedir / "RULES.md").write_text(rules_content, encoding="utf-8")
+    (sitedir / "CLAUDE.md").write_text(rules_content, encoding="utf-8")
+
+    claude_dir = sitedir / ".claude"
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    settings_path = claude_dir / "settings.json"
+    repo_settings = BASE / ".claude" / "settings.json"
+    if repo_settings.exists():
+        settings_path.write_text(repo_settings.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        settings_path.write_text(json.dumps({
+            "permissions": {
+                "ask": [
+                    "Bash(*--go*)", "Bash(*--g*)", "Bash(*--yes*)", "Bash(*--y*)"
+                ],
+                "deny": [
+                    "Bash(script *)", "Bash(*xargs*)", "Bash(*expect*)", "Bash(*unbuffer*)", "Bash(*tmux*)",
+                    "Read(~/.pro-web-static/**)", "Bash(*token.json*)", "Bash(*.pro-web-static*)",
+                    "Bash(curl*pro-web.propulse-lab.com*)", "Bash(python*-c*)",
+                    "Edit(*.py)", "Edit(**/*.py)", "Write(*.py)", "Write(**/*.py)",
+                    "Edit(**/*.sh)", "Write(**/*.sh)", "Bash(*.sh*)", "Bash(perl*)",
+                    "Bash(node*-e*)", "Bash(ruby*)", "Edit(.claude/**)", "Write(.claude/**)"
+                ]
+            }
+        }, indent=2), encoding="utf-8")
+
+
+def cmd_replace(args):
+    """Remplace une chaîne dans tous les fichiers texte/HTML du site local (multi-OS, ignore PDF/images)."""
+    info = get_info(args)
+    check_static(info)
+    sitedir = site_dir(info)
+    mpath = sitedir / MANIFEST
+    if not mpath.exists():
+        die(f"pas de miroir local pour {info['domain']} — fais 'pull' d'abord.")
+    if not args.old:
+        die("la chaîne à rechercher (<old>) ne peut pas être vide.")
+
+    old_bytes = args.old.encode("utf-8")
+    new_bytes = args.new.encode("utf-8")
+    EXCLUDED_NAMES = {MANIFEST, "RULES.md", "CLAUDE.md", "README.md"}
+    BINARY_SUFFIXES = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".zip"}
+
+    matches = []
+    for p in sorted(sitedir.rglob("*")):
+        rel = p.relative_to(sitedir)
+        if not p.is_file() or p.name in EXCLUDED_NAMES or p.suffix.lower() == ".md":
+            continue
+        if any(part.startswith(".") for part in rel.parts):
+            continue
+        if p.suffix.lower() in BINARY_SUFFIXES:
+            continue
+        raw = p.read_bytes()
+        if raw.startswith((b"%PDF-", b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff", b"GIF8", b"RIFF")):
+            continue
+        count = raw.count(old_bytes)
+        if count > 0:
+            matches.append((p, "/".join(rel.parts), count, raw))
+
+    if not matches:
+        print(f"Aucune occurrence de '{args.old}' trouvée dans {sitedir}.")
+        return
+
+    total_occ = sum(c for _, _, c, _ in matches)
+    print(f"Site : {info['domain']} — {total_occ} occurrence(s) dans {len(matches)} fichier(s) :")
+    for _, rel_str, c, _ in matches[:25]:
+        print(f"  ~ {rel_str} ({c}x)")
+    if len(matches) > 25:
+        print(f"  ... et {len(matches) - 25} autre(s) fichier(s).")
+
+    if not gate(args, "Ajoute --go pour appliquer le remplacement sur les fichiers locaux.",
+                f"Remplacer '{args.old}' par '{args.new}' dans {len(matches)} fichier(s) ?"):
+        return
+
+    for p, _, _, raw in matches:
+        p.write_bytes(raw.replace(old_bytes, new_bytes))
+    print(f"✅ Remplacement appliqué dans {len(matches)} fichier(s). Lance 'push' pour vérifier et publier.")
+
+
+def _emit_telemetry(op: str, domain: str = None, duration_ms: int = 0, status: str = "ok", error_reason: str = None) -> None:
+    """Sonde Phase 8 (append JSONL non bloquant et sans PII)."""
+    try:
+        target = os.environ.get("PPL_TELEMETRY_PATH")
+        if not target:
+            agy_dir = Path.home() / ".gemini" / "antigravity" / "state" / "telemetry"
+            if agy_dir.exists():
+                target = str(agy_dir / "briques_metrics.jsonl")
+            else:
+                target = str(TOKEN_PATH.parent / "briques_metrics.jsonl")
+        tpath = Path(target)
+        tpath.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "brique": "ppl_static",
+            "operation": op,
+            "domain": domain or "",
+            "duration_ms": duration_ms,
+            "status": status,
+            "error_reason": error_reason,
+        }
+        with _REFRESH_LOCK:
+            with open(tpath, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser(prog="ppl_static", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -758,6 +1212,7 @@ def main():
 
     p = add_sub("pull", "Miroir local complet du site")
     add_domain(p)
+    p.add_argument("--full", action="store_true", help="inclure wp-content/uploads et wp-includes")
     p.set_defaults(func=cmd_pull)
 
     p = add_sub("preview", "Serveur local pour prévisualiser")
@@ -769,6 +1224,13 @@ def main():
     add_domain(p)
     add_go(p)
     p.set_defaults(func=cmd_push)
+
+    p = add_sub("replace", "Remplace un texte/URL dans tous les fichiers HTML/texte du site local")
+    add_domain(p)
+    p.add_argument("old", help="texte ou URL à rechercher")
+    p.add_argument("new", help="texte ou URL de remplacement")
+    add_go(p)
+    p.set_defaults(func=cmd_replace)
 
     p = add_sub("add", "Ajoute/écrase un fichier")
     add_domain(p)
@@ -790,7 +1252,21 @@ def main():
     p.set_defaults(func=cmd_sethome)
 
     args = ap.parse_args()
-    args.func(args)
+    t0 = time.monotonic()
+    status = "ok"
+    err_reason = None
+    try:
+        args.func(args)
+    except BaseException as e:
+        if isinstance(e, SystemExit) and e.code in (0, None):
+            status = "ok"
+        else:
+            status = "error"
+            err_reason = str(e)
+        raise
+    finally:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        _emit_telemetry(getattr(args, "cmd", "unknown"), getattr(args, "domain", None), dur_ms, status, err_reason)
 
 
 if __name__ == "__main__":

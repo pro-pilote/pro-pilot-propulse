@@ -51,6 +51,7 @@ Piliers Techniques Disponibles :
   3. platform  → Espaces Membres & Plateformes (ai-child / REST API)
   4. acq       → Pro Acquisition (Formulaires Optin, Listes Blueshift/SFMC)
   5. doc       → Compilateur de Documentation Atomique Partenaire
+  6. daily     → Pipeline Daily Newsletters (Google Doc -> Dual Preview -> Site + SFMC)
 
 Usage :
   ppl init <domaine | slug-bdc | url>
@@ -174,8 +175,8 @@ def cmd_update(args):
         return 1
 
 
-def build_rules(clean_domain: str, partner_id: int, duplicate_pairs: list = None) -> str:
-    """Génère le contenu de RULES.md / CLAUDE.md pour un site statique."""
+def build_rules(clean_domain: str, partner_id: int, site_type: str = "STATIC", duplicate_pairs: list = None) -> str:
+    """Génère le contenu de RULES.md / CLAUDE.md pour un site statique ou les pages autorisées d'un site non-STATIC."""
     dup_rules = ""
     if duplicate_pairs:
         dup_rules = (
@@ -185,10 +186,21 @@ def build_rules(clean_domain: str, partner_id: int, duplicate_pairs: list = None
             + "\n👉 Si tu modifies l'une de ces pages, mets TOUJOURS à jour les deux fichiers de façon identique !\n"
         )
 
+    if site_type == "STATIC":
+        arch_desc = "Site **statique pur** (HTML5, CSS, JS, images). Zéro WordPress, zéro CMS."
+        scope_section = ""
+    else:
+        arch_desc = f"Site **{site_type}** — Gestion restreinte aux pages `/pages/`, `/leads/` et `/cadeau/`."
+        scope_section = """
+### 🛑 RÈGLE ABSOLUE DE PÉRIMÈTRE (SITE NON-STATIC)
+- **SEULES les pages commençant par `/pages/`, `/leads/` ou `/cadeau/` sont vibecodables.**
+- Toute création ou modification d'un fichier en dehors de ces trois dossiers est strictement bloquée par le CLI pour protéger le Core WordPress.
+"""
+
     return f"""# Consignes Assistant IA (Grok / ChatGPT / Claude / Cursor) — {clean_domain}
 
 > **Site** : {clean_domain} (Partner ID: {partner_id})
-> **Architecture** : Site **statique pur** (HTML5, CSS, JS, images). Zéro WordPress, zéro CMS.
+> **Architecture** : {arch_desc}
 
 ---
 
@@ -204,7 +216,7 @@ Quand tu génères du code HTML, CSS ou JS pour ce site :
    L'utilisateur travaille en remplacement complet dans son éditeur local. Un fichier tronqué détruirait la mise en page en production.
 
 ---
-
+{scope_section}
 ## 🔄 Workflow Autonome pour l'Agent IA (Grok / Cursor / Claude)
 
 1. **Édition du Code** :
@@ -294,98 +306,89 @@ def cmd_init(args):
             print(f"   Le chemin demandé (« {requested_path} ») touche au Core ou au thème et ne doit PAS être vibecodé.\n")
             sys.exit(1)
 
-    # Site STATIC Pro Web
-    if site_type == "STATIC":
-        print(f"📥 Téléchargement du miroir local pour « {clean_domain} »...")
-        class DummyArgs:
-            domain = clean_domain
-            full = False
-            raw = False
-        ppl_static.cmd_pull(DummyArgs())
+    # Initialisation du workspace (Sites STATIC et pages autorisées des sites non-STATIC)
+    print(f"📥 Initialisation du workspace pour « {clean_domain} » ({site_type})...")
+    class DummyArgs:
+        domain = clean_domain
+        full = False
+        raw = False
+    ppl_static.cmd_pull(DummyArgs())
 
-        # Découverte du slug partenaire
-        partner_slug = "pan"
-        partners_dir = ROOT_DIR / "storage" / "partners"
-        if partners_dir.exists():
-            for pf in partners_dir.glob("*.json"):
-                try:
-                    pdata = json.loads(pf.read_text(encoding="utf-8"))
-                    if pdata.get("partner_id") == partner_id:
-                        partner_slug = pdata.get("slug", "pan")
-                        break
-                except Exception:
-                    pass
+    # Découverte du slug partenaire
+    partner_slug = "pan"
+    partners_dir = ROOT_DIR / "storage" / "partners"
+    if partners_dir.exists():
+        for pf in partners_dir.glob("*.json"):
+            try:
+                pdata = json.loads(pf.read_text(encoding="utf-8"))
+                if pdata.get("partner_id") == partner_id:
+                    partner_slug = pdata.get("slug", "pan")
+                    break
+            except Exception:
+                pass
 
-        actual_domain = info.get("domain") or clean_domain
+    actual_domain = info.get("domain") or clean_domain
 
-        # Analyse des particularités du site (pages doublons)
-        site_dir = ROOT_DIR / "sites" / actual_domain
-        if not site_dir.exists():
-            site_dir = Path.cwd() / "sites" / actual_domain
+    # Analyse des particularités du site (pages doublons)
+    site_dir = ROOT_DIR / "sites" / actual_domain
+    if not site_dir.exists():
+        site_dir = Path.cwd() / "sites" / actual_domain
 
-        duplicate_pairs = []
-        if site_dir.exists():
-            subdirs = [p for p in site_dir.iterdir() if p.is_dir() and not p.name.startswith(".")]
-            for sd in subdirs:
-                if (sd / "index.html").exists() and (site_dir / f"{sd.name}.html").exists():
-                    duplicate_pairs.append(sd.name)
+    duplicate_pairs = []
+    if site_dir.exists():
+        subdirs = [p for p in site_dir.iterdir() if p.is_dir() and not p.name.startswith(".")]
+        for sd in subdirs:
+            if (sd / "index.html").exists() and (site_dir / f"{sd.name}.html").exists():
+                duplicate_pairs.append(sd.name)
 
-        dup_rules = ""
-        if duplicate_pairs:
-            dup_rules = (
-                f"\n### ⚠️ Règle Double Arborescence HTML ({len(duplicate_pairs)} pages détectées) :\n"
-                "Les sous-pages suivantes existent à la fois sous forme de dossier et de fichier .html :\n"
-                + "\n".join(f"  - /{p}/index.html ET /{p}.html" for p in duplicate_pairs)
-                + "\n👉 Si tu modifies l'une de ces pages, mets TOUJOURS à jour les deux fichiers de façon identique !\n"
-            )
+    dup_rules = ""
+    if duplicate_pairs:
+        dup_rules = (
+            f"\n### ⚠️ Règle Double Arborescence HTML ({len(duplicate_pairs)} pages détectées) :\n"
+            "Les sous-pages suivantes existent à la fois sous forme de dossier et de fichier .html :\n"
+            + "\n".join(f"  - /{p}/index.html ET /{p}.html" for p in duplicate_pairs)
+            + "\n👉 Si tu modifies l'une de ces pages, mets TOUJOURS à jour les deux fichiers de façon identique !\n"
+        )
 
-        rules_content = build_rules(actual_domain, partner_id, duplicate_pairs)
+    rules_content = build_rules(actual_domain, partner_id, site_type, duplicate_pairs)
 
-        # Écriture des consignes dans le workspace
-        if site_dir.exists():
-            (site_dir / "RULES.md").write_text(rules_content, encoding="utf-8")
-            (site_dir / "CLAUDE.md").write_text(rules_content, encoding="utf-8")
+    # Écriture des consignes dans le workspace
+    if site_dir.exists():
+        (site_dir / "RULES.md").write_text(rules_content, encoding="utf-8")
+        (site_dir / "CLAUDE.md").write_text(rules_content, encoding="utf-8")
 
-            claude_dir = site_dir / ".claude"
-            claude_dir.mkdir(parents=True, exist_ok=True)
-            settings_path = claude_dir / "settings.json"
-            
-            # Copie des 26 règles de sécurité du repo si présentes, ou template complet
-            repo_settings = ROOT_DIR / ".claude" / "settings.json"
-            if repo_settings.exists():
-                settings_path.write_text(repo_settings.read_text(encoding="utf-8"), encoding="utf-8")
-            else:
-                settings_path.write_text(json.dumps({
-                    "permissions": {
-                        "deny": [
-                            "Bash(*--go*)", "Bash(*--g*)", "Bash(*--yes*)", "Bash(*--y*)",
-                            "Bash(script *)", "Bash(*xargs*)", "Bash(*expect*)", "Bash(*unbuffer*)", "Bash(*tmux*)",
-                            "Read(~/.pro-web-static/**)", "Bash(*token.json*)", "Bash(*.pro-web-static*)",
-                            "Bash(curl*pro-web.propulse-lab.com*)", "Bash(python*-c*)",
-                            "Edit(*.py)", "Edit(**/*.py)", "Write(*.py)", "Write(**/*.py)",
-                            "Edit(**/*.sh)", "Write(**/*.sh)", "Bash(*.sh*)", "Bash(perl*)",
-                            "Bash(node*-e*)", "Bash(ruby*)", "Edit(.claude/**)", "Write(.claude/**)"
-                        ]
-                    }
-                }, indent=2), encoding="utf-8")
+        claude_dir = site_dir / ".claude"
+        claude_dir.mkdir(parents=True, exist_ok=True)
+        settings_path = claude_dir / "settings.json"
+        
+        # Copie des 26 règles de sécurité du repo si présentes, ou template complet
+        repo_settings = ROOT_DIR / ".claude" / "settings.json"
+        if repo_settings.exists():
+            settings_path.write_text(repo_settings.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            settings_path.write_text(json.dumps({
+                "permissions": {
+                    "deny": [
+                        "Bash(*--go*)", "Bash(*--g*)", "Bash(*--yes*)", "Bash(*--y*)",
+                        "Bash(script *)", "Bash(*xargs*)", "Bash(*expect*)", "Bash(*unbuffer*)", "Bash(*tmux*)",
+                        "Read(~/.pro-web-static/**)", "Bash(*token.json*)", "Bash(*.pro-web-static*)",
+                        "Bash(curl*pro-web.propulse-lab.com*)", "Bash(python*-c*)",
+                        "Edit(*.py)", "Edit(**/*.py)", "Write(*.py)", "Write(**/*.py)",
+                        "Edit(**/*.sh)", "Write(**/*.sh)", "Bash(*.sh*)", "Bash(perl*)",
+                        "Bash(node*-e*)", "Bash(ruby*)", "Edit(.claude/**)", "Write(.claude/**)"
+                    ]
+                }
+            }, indent=2), encoding="utf-8")
 
-        print(f"\n✅ Workspace configuré avec succès dans : {site_dir}")
-        print("   📄 RULES.md généré (prêt à être copié dans Grok, Cursor, ChatGPT)")
-        print("   🛡️  26 Garde-fous Claude Code actifs (.claude/settings.json)")
-        print(f"\n🚀 Commandes opérationnelles (depuis la racine du kit) :")
-        print(f"   {proweb_env.PY_CMD} ppl.py static preview {actual_domain}              # tester sur http://localhost:8080")
-        print(f"   {proweb_env.PY_CMD} ppl.py static push {actual_domain}                 # vérifier le diff (dry-run)")
-        print(f"   {proweb_env.PY_CMD} ppl.py static push {actual_domain} --go --yes      # publication agent (après approbation chat)\n")
-        sys.exit(0)
-
-    # Si WordPress / ai-child
-    print(f"\n🧩 Site WordPress détecté ({clean_domain}) :")
-    print("   • Prérequis Réseau & Connexion (Doctrine Globale) :")
-    print("   1. Autoriser votre IP au préalable sur : https://pro-ips.propulse-lab.com (1 fois par mois)")
-    print(f"   2. Connexion admin sur : https://www-admin.{clean_domain}/wp-login.php")
-    print("      - Si votre email est celui de l'organisation : cliquez directement sur 'Se connecter avec Google'")
-    print("      - Si vous n'avez pas d'email @organisation : demandez la création préalable de votre compte")
-    print(f"   3. Générer votre clé en 1 clic : https://www-admin.{clean_domain}/wp-admin/authorize-application.php?app_name=agent-api\n")
+    print(f"\n✅ Workspace configuré avec succès dans : {site_dir}")
+    print("   📄 RULES.md généré (prêt à être copié dans Grok, Cursor, ChatGPT)")
+    print("   🛡️  26 Garde-fous Claude Code actifs (.claude/settings.json)")
+    if site_type != "STATIC":
+        print(f"   🔒 Périmètre restreint : /pages/, /leads/ et /cadeau/ uniquement (Core protégé)")
+    print(f"\n🚀 Commandes opérationnelles (depuis la racine du kit) :")
+    print(f"   {proweb_env.PY_CMD} ppl.py static preview {actual_domain}              # tester sur http://localhost:8080")
+    print(f"   {proweb_env.PY_CMD} ppl.py static push {actual_domain}                 # vérifier le diff (dry-run)")
+    print(f"   {proweb_env.PY_CMD} ppl.py static push {actual_domain} --go --yes      # publication agent (après approbation chat)\n")
     sys.exit(0)
 
 
@@ -441,6 +444,11 @@ def main():
     elif cmd == "doc":
         compile_script = ROOT_DIR / "compiler" / "compile.mjs"
         res = subprocess.run(["node", str(compile_script)] + sub_args)
+        sys.exit(res.returncode)
+
+    elif cmd == "daily":
+        daily_script = ROOT_DIR / "daily" / "ppl-daily.mjs"
+        res = subprocess.run(["node", str(daily_script)] + sub_args)
         sys.exit(res.returncode)
 
     elif cmd == "update":

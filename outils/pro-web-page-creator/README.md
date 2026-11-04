@@ -8,8 +8,8 @@ Générer des pages web de haute qualité (Landing Pages d'acquisition, pages d'
 - **Conteneur GTM obligatoire** : `[[ppl.gtm_id]]`
 
 ## 2. Fichiers à consulter dans ce dépôt avant génération
-1. `donnees-business/<bu>/<produit>/fiche-produit.md` (promesse, arguments, intervenant/auteur, mentions légales).
-2. `donnees-business/<bu>/<produit>/design-system.md` (palette de couleurs, typographies, style des boutons CTA).
+1. `donnees-business/<sku>/fiche-produit.md` (promesse, arguments, intervenant/auteur, mentions légales).
+2. `donnees-business/<sku>/design-system.md` (palette de couleurs, typographies, style des boutons CTA).
 3. [`specificites.md`](./specificites.md) et [`erreurs-connues.md`](./erreurs-connues.md).
 
 ## 3. Règles d'Or de Structure HTML/CSS

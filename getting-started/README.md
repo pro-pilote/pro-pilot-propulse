@@ -2,6 +2,16 @@
 
 Bienvenue dans **Pro-Pilot**. Ce dossier permet à votre assistant IA (Claude Desktop, Claude Code, Cursor, Codex, Antigravity, Grok, ChatGPT) de connaître votre métier, vos produits et d'exécuter vos actions en toute sécurité.
 
+## Étape 0 — Prérequis Techniques (Automatique — 1 seule fois)
+
+Les outils d'exécution locale (`tools/ppl.py`) nécessitent **Python 3.9+** et la librairie `requests`.
+- **Avec le lanceur auto-porteur** (installe automatiquement un Python 3.12 portable dans `.venv/` si Python n'est pas installé sur votre poste) :
+  - **macOS / Linux** : `./tools/ppl doctor`
+  - **Windows** : `.\tools\ppl.cmd doctor`
+- **Ou en une commande système** (exécutée automatiquement par votre agent IA à l'étape 1 si Python est absent) :
+  - **macOS** : `python3 -c "import sys" 2>/dev/null || brew install python || xcode-select --install` puis `python3 -m pip install -r tools/requirements.txt || python3 -m pip install --break-system-packages -r tools/requirements.txt`
+  - **Windows** : `winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements` puis `py -m pip install -r tools/requirements.txt`
+
 ## Étape 1 — Premier lancement (Onboarding)
 
 Lors de votre toute première session, demandez à votre IA :

@@ -4,7 +4,7 @@
 - Ne devine **jamais** un tarif, une date de webinaire, un identifiant de salle (`data-room-slug`), un identifiant GTM, une URL de redirection ou une mention légale.
 - Toute donnée injectée dans une page doit provenir :
   1. Du brief fourni par le partenaire (ex. Google Doc joint à la conversation),
-  2. Ou des fichiers du dépôt partenaire (`donnees-business/<bu>/<produit>/` et `outils/<outil>/variables.md`).
+  2. Ou des fichiers du dépôt partenaire (`donnees-business/<sku>/` et `outils/<outil>/variables.md`).
 
 ## 2. Poser les questions manquantes en une seule fois
 Si le brief du partenaire est incomplet pour générer la page ou exécuter l'outil :

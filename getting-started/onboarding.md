@@ -2,7 +2,11 @@
 
 ## Instructions pour l'Assistant IA
 
-Si le fichier local `.pro-pilot/profile.md` n'existe pas encore sur l'ordinateur de l'utilisateur (ou contient des champs `À_REMPLIR`), tu DOIS conduire cet entretien d'onboarding avant toute autre tâche.
+Si le fichier local `.pro-pilot/profile.md` n'existe pas encore sur l'ordinateur de l'utilisateur (ou contient des champs `À_REMPLIR`), tu DOIS :
+1. **Vérifier et installer silencieusement l'environnement Python local** avant que l'utilisateur n'ait à le faire lui-même :
+   - Si `./tools/ppl` (macOS/Linux) ou `.\tools\ppl.cmd` (Windows) est présent, exécute-le (`./tools/ppl doctor`) : il télécharge automatiquement un Python 3.12 portable isolé (`.venv/`) et installe `tools/requirements.txt` si Python est absent du poste.
+   - Sinon, vérifie `python3 -c "import sys"` (ou `py -3 -c "import sys"` sous Windows). S'il est absent, installe-le automatiquement (`winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements` sous Windows, `brew install python || xcode-select --install` sous macOS), puis installe `tools/requirements.txt`.
+2. **Conduire cet entretien d'onboarding** avant toute autre tâche.
 
 Pose les questions suivantes de manière claire, chaleureuse et concise :
 

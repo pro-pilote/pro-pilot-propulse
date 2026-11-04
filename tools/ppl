@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Bootstrap auto-porteur Pro Tools Partner (macOS / Linux)
+# Si Python 3.9+ ou pip est absent du poste, télécharge automatiquement un Python 3.12
+# portable isolé dans .venv/ (via uv, sans droits admin ni popup Xcode) et installe requirements.txt.
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PY="$DIR/.venv/bin/python"
+
+has_usable_system_python() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 1
+  fi
+  local py_bin
+  py_bin="$(command -v python3)"
+  # Sur macOS, /usr/bin/python3 sans Command Line Tools ouvre une popup bloquante
+  if [[ "$(uname -s)" == "Darwin" && "$py_bin" == "/usr/bin/python3" ]]; then
+    if ! xcode-select -p >/dev/null 2>&1; then
+      return 1
+    fi
+  fi
+  python3 -c 'import sys, venv; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1
+}
+
+bootstrap_venv() {
+  echo "⚡ Initialisation de l'environnement Python local (.venv)..." >&2
+  if has_usable_system_python && python3 -m venv "$DIR/.venv" >/dev/null 2>&1; then
+    "$DIR/.venv/bin/pip" install --quiet --upgrade pip >/dev/null 2>&1 || true
+    "$DIR/.venv/bin/pip" install --quiet -r "$DIR/requirements.txt"
+    return 0
+  fi
+
+  echo "📦 Python non détecté sur ce poste — téléchargement automatique d'un Python 3.12 portable (sans droits admin)..." >&2
+  mkdir -p "$DIR/.uv"
+  if [[ ! -x "$DIR/.uv/uv" ]]; then
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$DIR/.uv" INSTALLER_NO_MODIFY_PATH=1 sh >/dev/null
+  fi
+  "$DIR/.uv/uv" venv --python 3.12 "$DIR/.venv" --quiet
+  "$DIR/.uv/uv" pip install --python "$VENV_PY" --quiet -r "$DIR/requirements.txt"
+}
+
+if [[ ! -x "$VENV_PY" ]]; then
+  bootstrap_venv
+fi
+
+exec "$VENV_PY" "$DIR/ppl.py" "$@"

@@ -14,8 +14,19 @@ jobs:
       fail-fast: false
       matrix:
         partner_repo:
-          - pro-pilot-pan
+          - pro-pilot-biosante
+          - pro-pilot-vivasante
+          - pro-pilot-biovancia
+          - pro-pilot-innovia
+          - pro-pilot-pantheon
+          - pro-pilot-cilumine
+          - pro-pilot-nutrazenith
+          - pro-pilot-nutriorigines
+          - pro-pilot-optima
+          - pro-pilot-tao
           - pro-pilot-aps
+          - pro-pilot-inse
+          - pro-pilot-lfp
     steps:
       - name: Checkout Socle (pro-pilot-propulse)
         uses: actions/checkout@v4
@@ -25,7 +36,7 @@ jobs:
       - name: Checkout Repo Partenaire (${{ matrix.partner_repo }})
         uses: actions/checkout@v4
         with:
-          repository: Pro-Pilot/${{ matrix.partner_repo }}
+          repository: pro-pilote/${{ matrix.partner_repo }}
           token: ${{ secrets.PRO_PILOT_APP_TOKEN }}
           path: partner
 

@@ -82,12 +82,19 @@ def compile_partner(socle_dir: Path, partner_dir: Path):
     generated_hashes.append({"file": "ROUTER.md", "checksum": "sha256-" + hashlib.sha256(rendered_router.encode("utf-8")).hexdigest()})
 
     # 3. Synchroniser getting-started/, regles/ et tools/
+    ignore_fn = shutil.ignore_patterns(
+        "compile_partner_repo.py",
+        "scaffold_partner_repos.py",
+        "__pycache__",
+        "*.pyc",
+        ".DS_Store",
+    )
     for folder in ["getting-started", "regles", "tools"]:
         src_folder = socle_dir / folder
         dst_folder = partner_dir / folder
         if dst_folder.exists():
             shutil.rmtree(dst_folder)
-        shutil.copytree(src_folder, dst_folder)
+        shutil.copytree(src_folder, dst_folder, ignore=ignore_fn)
         for p in sorted(dst_folder.rglob("*")):
             if p.is_file():
                 rel = str(p.relative_to(partner_dir))

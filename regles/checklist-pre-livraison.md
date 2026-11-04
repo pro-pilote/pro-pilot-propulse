@@ -2,7 +2,7 @@
 
 Avant de présenter une page ou un livrable au partenaire, vérifie systématiquement ces 6 points :
 
-1. **Conformité au Design System** : les couleurs, polices et styles de boutons correspondent exactement à `donnees-business/<bu>/<produit>/design-system.md`.
+1. **Conformité au Design System** : les couleurs, polices et styles de boutons correspondent exactement à `donnees-business/<sku>/design-system.md`.
 2. **Exactitude de l'Offre** : les titres, promesses, prix et mentions légales correspondent au brief et à `fiche-produit.md`.
 3. **Intégrité des Zones Protégées (Scripts & Formulaires)** :
    - Les conteneurs de formulaires (inscription webinaire, opt-in, paiement BDC) n'ont **jamais** été réécrits ou simplifiés à la main : seuls les snippets officiels de `outils/` sont utilisés.

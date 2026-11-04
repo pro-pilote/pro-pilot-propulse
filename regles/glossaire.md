@@ -11,6 +11,6 @@ Ce glossaire définit les termes utilisés par les équipes Édito, Acquisition 
 | **PCOU (Co-Registration)** | Inscription avec proposition conjointe d'inscription à une ou plusieurs lettres partenaires. | `Pro Acquisition` |
 | **Salle (Room)** | Espace de diffusion d'un webinaire en direct (Live) ou en rediffusion (Replay), identifié par son `room-slug`. | `Pro Webinaire` (`ppl webinar`) |
 | **GTM (Google Tag Manager)** | Conteneur de suivi analytics propre à chaque partenaire (`GTM-XXXXXXX`). Ne doit jamais être altéré ni supprimé d'une page. | `Pro Web Page Creator` |
-| **Business Unit (BU)** | Marque ou pôle éditorial au sein d'un partenaire (ex. *Sain au naturel*, *Citadelle Suisse*, *IA Visionnaire*). | `donnees-business/<bu>/` |
-| **Design System / Brandkit** | Charte graphique d'un produit ou d'une marque : palette de couleurs, typographies, boutons (CTA) et composants visuels autorisés. | `donnees-business/<bu>/<produit>/design-system.md` |
+| **Business Unit (BU)** | Marque ou pôle éditorial au sein d'un partenaire (ex. *Sain au naturel*, *Citadelle Suisse*, *IA Visionnaire*), référencé dans la fiche de chaque produit (`sku`). | `donnees-business/<sku>/fiche-produit.md` |
+| **Design System / Brandkit** | Charte graphique d'un produit ou d'une marque : palette de couleurs, typographies, boutons (CTA) et composants visuels autorisés. | `donnees-business/<sku>/design-system.md` |
 | **Code Source (SRC)** | Code de tracking marketing identifiant la provenance d'un prospect ou d'une vente. | `Pro Acquisition` / `Bi-Brother` |

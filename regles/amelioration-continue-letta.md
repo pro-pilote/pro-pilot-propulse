@@ -15,8 +15,8 @@ Déclenche cette procédure dès que l'utilisateur :
 | Erreur technique ou piège commis par l'IA sur un outil | `outils/<nom-outil>/erreurs-connues.md` |
 | Variable technique manquante ou erronée (GTM, pixel, domaine, ID) | `outils/<nom-outil>/variables.md` |
 | Particularité d'un site ou règle métier sur un outil | `outils/<nom-outil>/specificites.md` |
-| Charte graphique, couleur, typographie ou composant visuel d'un produit | `donnees-business/<bu>/<produit>/design-system.md` |
-| Offre, tarif, promesse, FAQ ou mention légale d'un produit | `donnees-business/<bu>/<produit>/fiche-produit.md` |
+| Charte graphique, couleur, typographie ou composant visuel d'un produit | `donnees-business/<sku>/design-system.md` |
+| Offre, tarif, promesse, FAQ ou mention légale d'un produit | `donnees-business/<sku>/fiche-produit.md` |
 
 ## 3. Remontée sur le dépôt du partenaire (Issue GitHub)
 
