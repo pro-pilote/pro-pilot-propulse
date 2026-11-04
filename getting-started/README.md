@@ -4,20 +4,17 @@ Bienvenue dans **Pro-Pilot**. Ce dossier permet à votre assistant IA (Claude De
 
 ## Étape 0 — Prérequis Techniques (Automatique — 1 seule fois)
 
-Les outils d'exécution locale (`tools/ppl.py`) nécessitent **Python 3.9+** et la librairie `requests`.
-- **Avec le lanceur auto-porteur** (installe automatiquement un Python 3.12 portable dans `.venv/` si Python n'est pas installé sur votre poste) :
-  - **macOS / Linux** : `./tools/ppl doctor`
-  - **Windows** : `.\tools\ppl.cmd doctor`
-- **Ou en une commande système** (exécutée automatiquement par votre agent IA à l'étape 1 si Python est absent) :
-  - **macOS** : `python3 -c "import sys" 2>/dev/null || brew install python || xcode-select --install` puis `python3 -m pip install -r tools/requirements.txt || python3 -m pip install --break-system-packages -r tools/requirements.txt`
-  - **Windows** : `winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements` puis `py -m pip install -r tools/requirements.txt`
+Les outils d'exécution locale nécessitent **Python 3.9+** et la librairie `requests` (voir [`prerequis.md`](./prerequis.md)).
+- **Avec le lanceur racine** (synchronise automatiquement le socle dans `.pro-pilot/` au premier appel) :
+  - **macOS / Linux** : `./ppl doctor`
+  - **Windows** : `ppl.cmd doctor`
+- **Installation rapide de `requests` si manquant** :
+  - **macOS / Linux** : `python3 -m pip install -r .pro-pilot/tools/requirements.txt`
+  - **Windows** : `py -3 -m pip install -r .pro-pilot\tools\requirements.txt`
 
 ## Étape 1 — Premier lancement (Onboarding)
 
-Lors de votre toute première session, demandez à votre IA :
-> « Lance mon onboarding Pro-Pilot en suivant `getting-started/onboarding.md`. »
-
-L'IA va vous poser **4 questions rapides** :
+Lors de votre toute première session, votre IA vous pose **4 questions rapides** :
 1. **Qui êtes-vous ?** (Votre organisation / marque et votre rôle)
 2. **Quel est votre périmètre au quotidien ?** (Édito, Acquisition, ou actions ciblées)
 3. **Confirmation de vos actions :** l'IA vous propose la liste des actions correspondant à votre besoin et vous demande de la confirmer.
@@ -28,7 +25,7 @@ Vos réponses sont enregistrées uniquement sur votre ordinateur dans `.pro-pilo
 ## Étape 2 — Utilisation au quotidien
 
 Exprimez simplement votre demande en langage naturel et glissez vos pièces jointes (Google Docs, PDF, brief) :
-- *« Crée une landing page d'inscription pour notre prochain webinaire à partir de ce document. »*
-- *« Mets à jour le texte de présentation sur notre page statique et montre-moi un aperçu. »*
+- *« Crée une page HTML de présentation à partir de ce document et publie cet objet sur Pro Web. »*
+- *« Importe cette URL Leadpages sur notre site Pro Web. »*
 
 Votre IA consulte automatiquement le routeur [`ROUTER.md`](../ROUTER.md), charge les fiches de votre dépôt partenaire et exécute les outils nécessaires.

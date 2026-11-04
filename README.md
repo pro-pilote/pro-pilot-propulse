@@ -21,9 +21,9 @@ pro-pilot-propulse/
 ├── outils/                                # // OUTILS (Focus 100% Pro Web)
 │   ├── README.md                          # Catalogue des outils autorisés
 │   ├── pro-web-page-creator/
-│   │   └── guide.md                       # Guide de création HTML/CSS & responsive
+│   │   └── guide.md                       # Scraper une URL externe (ex. Leadpages) pour l'importer sur Pro Web
 │   └── pro-web-uploader/
-│       └── guide.md                       # Guide de prévisualisation et publication Pro Web
+│       └── guide.md                       # Créer, prévisualiser et publier un objet (PAGE/DOCUMENT) sur Pro Web
 └── tools/                                 # Moteur d'exécution local (CLI ppl)
     ├── .claude/
     │   └── settings.json                  # Règles deny de sécurité Claude

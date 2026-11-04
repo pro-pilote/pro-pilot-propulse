@@ -1,8 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Read(.pro-pilot/rendered/**)",
-      "Read(../../.pro-pilot/rendered/**)"
+      "Read(.pro-pilot/ROUTER.md)",
+      "Read(.pro-pilot/regles/**)",
+      "Read(.pro-pilot/outils/**)",
+      "Read(.pro-pilot/getting-started/**)"
     ],
     "ask": [
       "Bash(*--go*)",

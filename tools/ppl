@@ -29,4 +29,8 @@ if ! command -v python3 >/dev/null 2>&1; then
   PY_BIN="python"
 fi
 
+if [ -f "$DIR/bootstrap.py" ]; then
+  export PPL_WORKSPACE="${PPL_WORKSPACE:-$DIR}"
+fi
+
 exec "$PY_BIN" "$PPL_SCRIPT" "$@"

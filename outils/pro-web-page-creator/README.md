@@ -1,21 +1,18 @@
 # Guide Propulse Lab — Pro Web Page Creator ([[ppl.partner_name]])
 
-## 1. Objectif & Paramètres Pré-remplis
-Générer des pages web de haute qualité (Landing Pages d'acquisition, pages éditoriales) pour **[[ppl.partner_name]]** (`partner_id: [[ppl.partner_id]]`), prêtes à être publiées sur `https://[[ppl.main_domain]]`.
+## 1. Objectif
+Scraper une URL externe (`originalUrl`, ex. une page Leadpages `https://<account>.lpages.co/<slug>/`) pour l'importer chez nous sur Pro Web (`https://[[ppl.main_domain]]`) en tant qu'objet `type: "PAGE"` (`key: "pages/<slug>"`).
 
 - **Partenaire** : [[ppl.partner_name]] (`[[ppl.partner_id]]`)
-- **Domaine Principal** : `[[ppl.main_domain]]`
-- **Conteneur GTM obligatoire** : `[[ppl.gtm_id]]`
+- **Domaine Principal** : `[[ppl.main_domain]]` (`websiteId: [[ppl.website_id]]`)
+- **Conteneur GTM injecté** : `[[ppl.gtm_id]]`
 
-## 2. Fichiers à consulter dans ce dépôt avant génération
-1. `donnees-business/<sku>/fiche-produit.md` (promesse, arguments, intervenant/auteur, mentions légales).
-2. `donnees-business/design-system.md` (palette de couleurs, typographies, style des boutons CTA).
-3. [`specificites.md`](./specificites.md) et [`erreurs-connues.md`](./erreurs-connues.md).
+## 2. Fonctionnement (`upload-page` vs `reload-page`)
+1. **`POST /api/objects/upload-page`** : Scrape le HTML de `originalUrl`, nettoie les scripts Leadpages, rapatrie et redimensionne les images `<img>` sur S3 (`<key>_assets/img/`), et enregistre l'objet `PAGE` (`subtype: "PAGE:OTHER"` par défaut).
+2. **`GET /api/objects/{objectId}/reload-page`** : Re-fetche uniquement le HTML brut depuis `originalUrl` **sans** rapatrier les images `<img>`.
 
-## 3. Règles d'Or de Structure HTML/CSS
-- **Zones protégées** : conserver les marqueurs de formulaire et de mentions légales (`<!-- PPL:FORM -->`, `<!-- PPL:BLOC:mentions-legales -->`).
-- **Tracking GTM** : toujours conserver le conteneur `[[ppl.gtm_id]]` intact (`<!-- PPL:GTM -->`).
-- **Responsive Mobile-First** : tester systématiquement l'affichage mobile (`375px`) et desktop (`1280px`).
-
-## 4. Prévisualisation et Publication
-Consulter `guide.md` et `outils/pro-web-uploader/README.md` pour lancer l'aperçu local (`http://127.0.0.1:8080`) puis publier sur `[[ppl.main_domain]]`.
+## 3. Garde-Fous Obligatoires
+- **`originalUrl` ASCII & HTTP 200** : L'URL source ne doit contenir aucun caractère accentué et ne doit pas faire de redirection `302`.
+- **Images de fond CSS** : Seules les balises `<img>` sont rapatriées ; les `background-image: url(...)` relatives ne sont pas réécrites.
+- **Protection des PDF** : Toujours vérifier le type MIME avant un `reload-page` pour ne jamais écraser un PDF par du HTML.
+- Consulter [`guide.md`](./guide.md), [`specificites.md`](./specificites.md) et [`erreurs-connues.md`](./erreurs-connues.md).

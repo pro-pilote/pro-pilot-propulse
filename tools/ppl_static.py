@@ -239,9 +239,23 @@ def api(method, path, partner=None, body=None, soft=False, _retried=False):
             "user-agent": "Mozilla/5.0 ppl_static.py",
         }
         params = {}
+        req_body = body
         if partner is not None and method.upper() == "GET":
             params["partnerId"] = str(partner)
-        r = requests.request(method, url, headers=headers, json=body, params=params, timeout=30)
+        elif isinstance(body, dict) and method.upper() == "POST":
+            req_body = dict(body)
+            if partner is not None:
+                req_body["partnerId"] = int(partner)
+            if clean_path == "/objects/signed-url":
+                allowed = {"websiteId", "partnerId", "key", "contentType"}
+                req_body = {k: v for k, v in req_body.items() if k in allowed}
+            elif clean_path == "/objects/upsert":
+                allowed = {
+                    "websiteId", "partnerId", "key", "type", "subtype",
+                    "originalFileName", "originalUrl", "leadpageEditUrl", "hasIndexing",
+                }
+                req_body = {k: v for k, v in req_body.items() if k in allowed and v is not None}
+        r = requests.request(method, url, headers=headers, json=req_body, params=params, timeout=30)
         if not r.ok:
             if soft:
                 return None
@@ -330,45 +344,70 @@ def my_partners():
 
 
 def _website_info(w, partner):
+    dom = norm_domain(w.get("domainName") or w.get("url") or "")
     return {
-        "domain": (w.get("domainName") or "").lower(),
-        "websiteId": w.get("_id"),
-        "partner": partner,
-        "type": w.get("type"),
-        "url": w.get("url"),
+        "domain": dom,
+        "websiteId": w.get("_id") or w.get("websiteId"),
+        "partner": int(partner) if partner is not None else 0,
+        "type": w.get("type") or "STATIC",
+        "url": w.get("url") or (f"https://{dom}" if dom else ""),
     }
+
+
+def _load_local_partner_vars():
+    """Lit les variables locales du dépôt partenaire (outils/*/variables.md)."""
+    import re
+    res = {}
+    var_re = re.compile(r"^\s*-\s*`?ppl\.([a-zA-Z0-9_]+)`?\s*:\s*`?([^`\n]+?)`?\s*$", re.MULTILINE)
+    for vf in WORKSPACE.glob("outils/*/variables.md"):
+        try:
+            for m in var_re.finditer(vf.read_text(encoding="utf-8")):
+                res[m.group(1).strip()] = m.group(2).strip()
+        except Exception:
+            pass
+    return res
 
 
 def resolve(domain, refresh=False, require=True):
     """Trouve le website record d'un domaine."""
     domain = norm_domain(domain)
     cache = load_cache()
-    if not refresh and domain in cache:
+    if not refresh and domain in cache and cache[domain].get("websiteId"):
         return cache[domain]
+
+    local_vars = _load_local_partner_vars()
+    local_dom = norm_domain(local_vars.get("main_domain") or "")
+    local_wid = local_vars.get("website_id")
+    local_pid = int(local_vars["partner_id"]) if str(local_vars.get("partner_id", "")).isdigit() else None
 
     api_key = env.get_api_key()
     if api_key:
         data = api("GET", "/websites", soft=True)
-        if data:
-            exact = None
-            fallback = None
-            for w in _items(data):
-                w_dom = norm_domain(w.get("domainName") or "")
-                if w_dom == domain:
-                    exact = _website_info(w, w.get("partnerId") or w.get("partner") or 0)
-                    break
-                elif w_dom.removeprefix("www.") == domain.removeprefix("www."):
-                    if not fallback:
-                        fallback = _website_info(w, w.get("partnerId") or w.get("partner") or 0)
-            matched = exact or fallback
-            if matched:
-                cache[domain] = matched
-                if matched.get("domain"):
-                    cache[norm_domain(matched["domain"])] = matched
-                save_cache(cache)
-                return matched
+        exact, fallback = None, None
+        for w in _items(data or []):
+            w_dom = norm_domain(w.get("domainName") or w.get("url") or "")
+            if not w_dom:
+                continue
+            pid = w.get("partnerId") or w.get("partner") or local_pid or 0
+            if w_dom == domain:
+                exact = _website_info(w, pid)
+                break
+            elif w_dom.removeprefix("www.") == domain.removeprefix("www.") and not fallback:
+                fallback = _website_info(w, pid)
+        matched = exact or fallback
+        if matched and not matched.get("websiteId") and local_wid:
+            if not local_dom or domain.removeprefix("www.") == local_dom.removeprefix("www."):
+                matched["websiteId"] = local_wid
+        if not matched and local_wid and local_pid and local_dom and domain.removeprefix("www.") == local_dom.removeprefix("www."):
+            matched = {"domain": domain, "websiteId": local_wid, "partner": local_pid, "type": "STATIC", "url": f"https://{domain}"}
+        if matched and matched.get("websiteId"):
+            cache[domain] = matched
+            if matched.get("domain"):
+                cache[norm_domain(matched["domain"])] = matched
+            save_cache(cache)
+            return matched
         if require:
-            die(f"'{domain}' introuvable parmi les sites associés à cette clé API.")
+            die(f"'{domain}' introuvable ou sans websiteId associé à cette clé API. Utilise --website-id <ID> --partner <PID>.")
         return None
 
     # Fallback legacy multi-partners (Lot A)
@@ -406,6 +445,20 @@ def resolve_by_id(website_id, partner):
     """Bypass 'resolve' : website-id + partner donnés directement (pas besoin
     de connaître le domaine). Alimente aussi le cache domaine→info si le site
     a un domaine, pour que 'resolve <domaine>' en profite ensuite."""
+    if env.get_api_key():
+        local_vars = _load_local_partner_vars()
+        dom = norm_domain(local_vars.get("main_domain") or "") or website_id
+        info = {
+            "domain": dom,
+            "websiteId": website_id,
+            "partner": int(partner),
+            "type": "STATIC",
+            "url": f"https://{dom}" if "." in dom else "",
+        }
+        cache = load_cache()
+        cache[dom] = info
+        save_cache(cache)
+        return info
     data = api("GET", "/api/websites", partner)
     for w in _items(data):
         if w.get("_id") == website_id:
@@ -991,23 +1044,31 @@ def cmd_doctor(args):
     print(f"║ 💻 OS Hôte        : {env.OS_NAME:<54} ║")
     print(f"║ 🏷️ Machine        : {env.HOSTNAME:<54} ║")
     print(f"║ 🐍 Lanceur Python : {env.PY_CMD:<54} ║")
-    strat = "macOS Chrome Keychain (auto)" if env.get_auth_strategy() == "chrome_keychain" else "Mode Guidé / Token collé"
+    api_key = env.get_api_key()
+    if api_key:
+        strat = "Clé API M2M (PRO_WEB_API_KEY)"
+    else:
+        strat = "macOS Chrome Keychain (auto)" if env.get_auth_strategy() == "chrome_keychain" else "Mode Guidé / Token collé"
     print(f"║ 🔑 Stratégie Auth : {strat:<54} ║")
 
     st = env.check_token_status()
     t_status = "Inexistant"
-    if st["exists"]:
+    if api_key:
+        masked = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "Active"
+        t_status = f"Clé API configurée ({masked})"
+    elif st["exists"]:
         if st["valid"]:
             rem_m = int((st["remaining_seconds"] or 0) / 60)
             t_status = f"Valide ({rem_m} min restantes · {st['email'] or 'connecté'})"
         else:
             t_status = "Expiré (rafraîchissement requis)"
-    print(f"║ 📂 Token Local    : {t_status:<54} ║")
+    print(f"║ 📂 Auth Locale    : {t_status:<54} ║")
 
     # Test réseau rapide vers l'API
     net_status = "Vérification en cours..."
+    target_url = PUBLIC_API_URL if api_key else BASE_URL
     try:
-        r = requests.head(BASE_URL, timeout=4)
+        r = requests.head(target_url, timeout=4)
         net_status = f"Accessible (HTTP {r.status_code})"
     except Exception as e:
         net_status = f"Inaccessible ({str(e)[:30]})"
@@ -1023,10 +1084,10 @@ def cmd_doctor(args):
         print("💡 [CONSEIL WINDOWS] : Veillez à ce que votre éditeur et Git conservent les fins de ligne")
         print("   en LF (et non CRLF) pour ne pas altérer les calculs de hash SHA-256 lors des push.\n")
 
-    if not st["exists"] or st["expired"]:
-        print(f"👉 Action requise : lancez '{env.PY_CMD} ppl.py login' pour initialiser votre session Pro Web.\n")
-    else:
+    if api_key or (st["exists"] and not st["expired"]):
         print("✅ Connecteur opérationnel et prêt à l'emploi.\n")
+    else:
+        print(f"👉 Action requise : configurez PRO_WEB_API_KEY ou lancez '{env.PY_CMD} ppl.py login'.\n")
 
 
 def build_rules(clean_domain: str, partner_id: int, site_type: str = "STATIC", duplicate_pairs: list = None) -> str:

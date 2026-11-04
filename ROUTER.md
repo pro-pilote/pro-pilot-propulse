@@ -18,8 +18,8 @@ Identifie l'intention et consulte uniquement les fichiers correspondants :
 
 | Besoin exprimé | 1. Données Business | 2. Spécifications & Guides | 3. Règles & Commandes |
 |---|---|---|---|
-| **Créer ou modifier une Landing Page (LP)** (ex. depuis un Google Doc) | `donnees-business/<sku>/fiche-produit.md`<br>`donnees-business/design-system.md` | [`outils/pro-web-page-creator/guide.md`](./outils/pro-web-page-creator/guide.md)<br>`outils/pro-web-page-creator/specificites.md`<br>`outils/pro-web-page-creator/erreurs-connues.md` | [`regles/clarification.md`](./regles/clarification.md)<br>Tester avec `./ppl static preview <domaine>` |
-| **Publier ou prévisualiser un site sur Pro Web** | — | [`outils/pro-web-uploader/guide.md`](./outils/pro-web-uploader/guide.md)<br>`outils/pro-web-uploader/specificites.md`<br>`outils/pro-web-uploader/variables.md` | [`regles/garde-fous.md`](./regles/garde-fous.md)<br>Déployer avec `./ppl static push <domaine>` |
+| **Créer, prévisualiser ou publier un objet sur Pro Web** (page HTML/LP, PDF, image) | `donnees-business/<sku>/fiche-produit.md`<br>`donnees-business/design-system.md` | [`outils/pro-web-uploader/guide.md`](./outils/pro-web-uploader/guide.md)<br>`outils/pro-web-uploader/specificites.md`<br>`outils/pro-web-uploader/erreurs-connues.md`<br>`outils/pro-web-uploader/variables.md` | [`regles/clarification.md`](./regles/clarification.md)<br>[`regles/garde-fous.md`](./regles/garde-fous.md)<br>Tester avec `./ppl static preview <domaine>`<br>Publier avec `./ppl static push <domaine>` ou `add` |
+| **Scraper une URL externe (ex. Leadpages) pour l'importer sur Pro Web** (`upload-page` / `reload-page`) | — | [`outils/pro-web-page-creator/guide.md`](./outils/pro-web-page-creator/guide.md)<br>`outils/pro-web-page-creator/specificites.md`<br>`outils/pro-web-page-creator/erreurs-connues.md`<br>`outils/pro-web-page-creator/variables.md` | [`regles/garde-fous.md`](./regles/garde-fous.md)<br>Vérifier que l'`originalUrl` est ASCII (HTTP 200 sans 302) |
 
 ---
 
