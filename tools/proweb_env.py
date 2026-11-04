@@ -42,6 +42,49 @@ TOKEN_DIR = Path.home() / ".pro-web-static"
 TOKEN_PATH = TOKEN_DIR / "token.json"
 
 
+def find_env_file(start_path=None):
+    """Remonte l'arborescence depuis start_path (ou cwd) pour trouver .env à la racine."""
+    cur = (start_path or Path.cwd()).resolve()
+    for parent in [cur] + list(cur.parents):
+        env_file = parent / ".env"
+        if env_file.is_file():
+            return env_file
+        if (parent / ".git").exists():
+            break
+    return None
+
+
+def load_env_vars():
+    """Charge les paires clé=valeur d'un fichier .env sans dépendance externe."""
+    env_file = find_env_file()
+    if not env_file:
+        return {}
+    res = {}
+    try:
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k = k.strip()
+            v = v.strip().strip("'\"")
+            if k and v:
+                res[k] = v
+    except Exception:
+        pass
+    return res
+
+
+def get_api_key():
+    """Récupère PRO_WEB_API_KEY depuis os.environ ou le fichier .env local le plus proche."""
+    if "PRO_WEB_API_KEY" in os.environ and os.environ["PRO_WEB_API_KEY"].strip():
+        return os.environ["PRO_WEB_API_KEY"].strip()
+    env_vars = load_env_vars()
+    if "PRO_WEB_API_KEY" in env_vars:
+        return env_vars["PRO_WEB_API_KEY"].strip()
+    return None
+
+
 def load_token():
     """Charge le payload JSON du token depuis TOKEN_PATH ou None si absent/invalide."""
     if not TOKEN_PATH.exists():

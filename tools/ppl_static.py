@@ -155,11 +155,14 @@ _REFRESH_LOCK = threading.Lock()
 
 
 def _get_token():
-    """Charge le token une seule fois par process (il ne change pas en cours
-    d'exécution, et push/pull peuvent faire des centaines d'appels API)."""
+    """Charge le token ou la clé API une seule fois par process."""
     global _TOKEN
     if _TOKEN is None:
-        _TOKEN = load_token()
+        api_key = env.get_api_key()
+        if api_key:
+            _TOKEN = {"api_key": api_key}
+        else:
+            _TOKEN = load_token()
     return _TOKEN
 
 
@@ -218,13 +221,42 @@ def _refresh_token(epoch_seen):
             return False
 
 
+PUBLIC_API_URL = os.environ.get("PRO_WEB_PUBLIC_API_URL") or "https://api-pro-web.propulse-lab.com"
+
+
 def api(method, path, partner=None, body=None, soft=False, _retried=False):
-    """Appelle l'API Pro Web. `partner` = x-partner-id (requis par la plupart
-    des endpoints /api/websites, /api/objects/* — PAS par /api/auth/user).
-    `soft=True` renvoie None sur échec HTTP au lieu de terminer le process —
-    réservé aux appels tolérants (ex. scan de partenaires dans resolve())."""
+    """Appelle l'API Pro Web (M2M x-api-key en priorité, ou session Bearer en Lot A)."""
+    api_key = env.get_api_key()
+    if api_key:
+        clean_path = "/" + path.lstrip("/")
+        if clean_path.startswith("/api/"):
+            clean_path = clean_path[4:]
+        url = PUBLIC_API_URL.rstrip("/") + clean_path
+        headers = {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "x-api-key": api_key,
+            "user-agent": "Mozilla/5.0 ppl_static.py",
+        }
+        params = {}
+        if partner is not None and method.upper() == "GET":
+            params["partnerId"] = str(partner)
+        r = requests.request(method, url, headers=headers, json=body, params=params, timeout=30)
+        if not r.ok:
+            if soft:
+                return None
+            die(f"{method} {url} → HTTP {r.status_code}\n{r.text[:500]}")
+        if not r.content:
+            return None
+        try:
+            return r.json()
+        except ValueError:
+            return r.text
+
     epoch = _TOKEN_EPOCH
     tok = _get_token()
+    if not tok or not tok.get("bearer"):
+        die(f"Non connecté. Configure PRO_WEB_API_KEY ou lance : {env.PY_CMD} ppl.py login")
     cookies = {"userCredential": tok["bearer"]}
     if tok.get("g_state_cookie"):
         cookies["g_state"] = tok["g_state_cookie"]
@@ -308,15 +340,38 @@ def _website_info(w, partner):
 
 
 def resolve(domain, refresh=False, require=True):
-    """Trouve le website record d'un domaine, en cherchant uniquement parmi
-    LES PARTENAIRES DE TON PROPRE COMPTE (jamais un scan global)."""
+    """Trouve le website record d'un domaine."""
     domain = norm_domain(domain)
     cache = load_cache()
     if not refresh and domain in cache:
-        cached = cache[domain]
-        # Contrôle Fail-Closed : l'entrée en cache doit appartenir aux organisations autorisées du compte courant
-        if cached.get("partner") in my_partners():
-            return cached
+        return cache[domain]
+
+    api_key = env.get_api_key()
+    if api_key:
+        data = api("GET", "/websites", soft=True)
+        if data:
+            exact = None
+            fallback = None
+            for w in _items(data):
+                w_dom = norm_domain(w.get("domainName") or "")
+                if w_dom == domain:
+                    exact = _website_info(w, w.get("partnerId") or w.get("partner") or 0)
+                    break
+                elif w_dom.removeprefix("www.") == domain.removeprefix("www."):
+                    if not fallback:
+                        fallback = _website_info(w, w.get("partnerId") or w.get("partner") or 0)
+            matched = exact or fallback
+            if matched:
+                cache[domain] = matched
+                if matched.get("domain"):
+                    cache[norm_domain(matched["domain"])] = matched
+                save_cache(cache)
+                return matched
+        if require:
+            die(f"'{domain}' introuvable parmi les sites associés à cette clé API.")
+        return None
+
+    # Fallback legacy multi-partners (Lot A)
     exact = None
     fallback = None
     for pid in my_partners():

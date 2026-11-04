@@ -1,7 +1,7 @@
 # Garde-Fous d'Exécution & Sécurité de Publication
 
 ## 1. Aucune mise en production sans validation humaine
-- Toute action qui modifie un site en ligne (`ppl static push --go`, `ppl bdc push --go`, `ppl platform put`) exige :
+- Toute action qui modifie un site en ligne (`./ppl static push <domaine> --go`) exige :
   1. Un aperçu local préalable validé par le partenaire,
   2. Une confirmation physique explicite de l'utilisateur dans son terminal.
 - L'assistant IA ne doit jamais tenter de contourner cette confirmation.
