@@ -56,9 +56,8 @@ Contrairement à `upload-page` (qui exécute `cleanScripts` côté serveur), la 
 Prendre le `websiteId` et le `partnerId` du domaine cible dans `outils/pro-web-uploader/variables.md`, puis lister les objets existants sur ce site :
 ```bash
 set -a; source .env; set +a
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?limit=500" \
-  -H "x-api-key: ${PRO_WEB_API_KEY}" \
-  -H "x-partner-id: ${PARTNER_ID}"
+curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=500" \
+  -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 - **Si la `key` cible existe déjà** : avertir l'utilisateur qu'il s'agit d'une **mise à jour (écrasement)** et sauvegarder la version en ligne dans `backups/<key>` (`curl -sS "<urlPublic>" -o "backups/..."`) avant toute écriture.
 

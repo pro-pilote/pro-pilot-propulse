@@ -24,9 +24,8 @@
 2. Vérifier dans `GET /objects/list/{websiteId}` si la `key` cible existe déjà :
    ```bash
    set -a; source .env; set +a
-   curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?limit=500" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "x-partner-id: ${PARTNER_ID}"
+   curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=500" \
+     -H "x-api-key: ${PRO_WEB_API_KEY}"
    ```
 3. **STOP** : Demander la confirmation explicite de l'utilisateur avant de lancer l'import ou le rechargement.
 
@@ -56,6 +55,10 @@ curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}/relo
   -H "x-partner-id: ${PARTNER_ID}"
 ```
 > **Attention** : `reload-page` ré-exécute le pipeline complet `page-creator` (y compris la purge et le re-téléchargement de `<key>_assets/img`) à partir de `originalUrl`. Ne jamais appeler `reload-page` sur une page qui a été éditée manuellement via `pro-web-uploader` (ses modifications manuelles seraient écrasées par `originalUrl`), ni sur un objet servant un PDF.
+>
+> **Garde-fou Pro Vidéo V2 & Divergence S3 vs Leadpages (Obligatoire avant tout `reload-page`)** :
+> 1. **Whitelist `domains_checker.json`** : Le lecteur Pro Vidéo V2 (`pro-video-player.js`) vérifie `window.location.host` dans `https://videos.<domaine-partenaire>/domains_checker.json` (comparaison exacte via `.includes()`). Pour que l'aperçu Leadpages (`originalUrl`) et l'URL publique Pro Web (`urlPublic`) lisent la vidéo sans `warning: Not authorized`, les deux hostnames doivent figurer dans `domains_checker.json`.
+> 2. **Audit pré-vol S3 vs Leadpages** : Avant tout `reload-page`, comparer les identifiants `.pro-video-player` présents sur l'URL publique (`urlPublic`) et sur la page source (`originalUrl`). Si l'URL publique contient un lecteur vidéo ajouté manuellement sur S3 qui n'est pas présent dans `originalUrl`, **ne jamais appeler `reload-page`** (utiliser `pro-web-uploader` à la place pour ne pas écraser le lecteur vidéo).
 
 ### Étape 4 — Polling de fin de traitement & Vérification URL publique (Obligatoire)
 Puisque `page-creator` s'exécute de façon asynchrone (5 à 30 secondes selon le nombre d'images `<img>`), attendre quelques secondes puis vérifier dans `GET /objects/list/{websiteId}` que l'objet apparaît avec un `updatedAt` récent, et contrôler l'URL publique :
