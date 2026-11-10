@@ -18,8 +18,10 @@ pro-pilot-propulse/
 │   ├── clarification.md                   # Zéro invention : poser les questions si données manquantes
 │   ├── garde-fous.md                      # Preview locale + validation humaine avant appel API
 │   └── amelioration-continue-letta.md     # Remontée des retours partenaires en Issue GitHub
-└── outils/                                # // OUTILS (Focus 100 % API Pro Web)
+└── outils/                                # // OUTILS (API Pro Web, Marketing Cloud & WordPress)
     ├── README.md                          # Catalogue des outils autorisés
+    ├── daily-publisher/
+    │   └── guide.md                       # Générer, prévisualiser (Studio 2 étapes) et publier un Daily (Email SFMC + Article Blog/Static)
     ├── pro-web-page-creator/
     │   └── guide.md                       # Scraper une URL externe (ex. Leadpages) pour l'importer sur Pro Web
     └── pro-web-uploader/
