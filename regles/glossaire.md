@@ -11,3 +11,4 @@ Ce glossaire définit les termes utilisés par les équipes Édito, Acquisition 
 | **GTM (Google Tag Manager)** | Conteneur de suivi analytics propre à chaque partenaire (`GTM-XXXXXXX`). Ne doit jamais être altéré ni supprimé d'une page existante. | `Pro Web Uploader` |
 | **Business Unit (BU)** | Marque ou pôle éditorial au sein d'un partenaire, référencé dans la fiche de chaque produit (`donnees-business/<sku>/fiche-produit.md`). | `donnees-business/<sku>/fiche-produit.md` |
 | **Design System / Brandkit** | Charte graphique d'un partenaire et de ses publications : palette de couleurs, typographies, boutons (CTA) et composants visuels autorisés. | `donnees-business/design-system.md` |
+| **Daily (Newsletter Quotidienne)** | Édition quotidienne déclinée en 2 volets coordonnés : **① Daily (Email)** dans Marketing Cloud (`freeformblock #195` + `templatebasedemail #207`) et **② Article sur le blog** (`BLOG` WordPress ou `STATIC` Pro Web). | `Daily Publisher` |

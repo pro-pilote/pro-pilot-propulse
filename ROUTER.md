@@ -12,7 +12,7 @@ Les pages de Pro-Pilot sont articulées de manière **atomique** : ne charge jam
 
 ---
 
-## Étape 2 — Arbre de Routage Pro Web (100 % API `x-api-key`)
+## Étape 2 — Arbre de Routage Pro-Pilot : API Pro Web, Marketing Cloud & WordPress
 
 Identifie l'intention et consulte uniquement les fichiers correspondants :
 
@@ -20,6 +20,7 @@ Identifie l'intention et consulte uniquement les fichiers correspondants :
 |---|---|---|---|
 | **Créer, prévisualiser ou publier un objet sur Pro Web** (`PAGE` HTML/LP ou `DOCUMENT` PDF/image) | `donnees-business/<sku>/fiche-produit.md`<br>`donnees-business/design-system.md` | [`outils/pro-web-uploader/guide.md`](./outils/pro-web-uploader/guide.md)<br>`outils/pro-web-uploader/specificites.md`<br>`outils/pro-web-uploader/erreurs-connues.md`<br>`outils/pro-web-uploader/variables.md` | [`regles/clarification.md`](./regles/clarification.md)<br>[`regles/garde-fous.md`](./regles/garde-fous.md)<br>Faire valider l'aperçu local HTML<br>Publier via `POST /objects/signed-url` → `PUT S3` → `POST /objects/upsert` |
 | **Scraper une URL externe (ex. Leadpages) pour l'importer sur Pro Web** (`upload-page` / `reload-page`) | — | [`outils/pro-web-page-creator/guide.md`](./outils/pro-web-page-creator/guide.md)<br>`outils/pro-web-page-creator/specificites.md`<br>`outils/pro-web-page-creator/erreurs-connues.md`<br>`outils/pro-web-page-creator/variables.md` | [`regles/garde-fous.md`](./regles/garde-fous.md)<br>Vérifier que l'`originalUrl` est ASCII (HTTP 200 sans 302)<br>Appeler `POST /objects/upload-page` ou `POST /objects/{objectId}/reload-page` |
+| **Préparer, retoucher ou publier une newsletter quotidienne (Daily)** (① Email Marketing Cloud + ② Article sur le blog WordPress ou site statique) | `donnees-business/design-system.md` | [`outils/daily-publisher/guide.md`](./outils/daily-publisher/guide.md)<br>`outils/daily-publisher/specificites.md`<br>`outils/daily-publisher/erreurs-connues.md`<br>`outils/daily-publisher/variables.md` | [`regles/clarification.md`](./regles/clarification.md)<br>[`regles/garde-fous.md`](./regles/garde-fous.md)<br>Faire valider le Studio 2 étapes scellé (`SHA-256`)<br>Publier via API REST Marketing Cloud (`195` + `207`) et WP REST API / Pro Web API |
 
 ---
 

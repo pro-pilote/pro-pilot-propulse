@@ -13,6 +13,7 @@
   - Les scripts Google Tag Manager (`GTM-XXXXXXX` dans `<head>` et `<noscript>` dans `<body>`),
   - Les scripts de formulaires d'opt-in (`https://cdn.info-contenu.io/assets/leadBox-v1.0.0.js`, `email-autocomplete.js`, `eventTriggerV1.js`, `redirect-v1.0.0.js`, `intlTelInput.js`), les balises `<form>` et le pied de page légal (Mentions légales, CGV, Politique de confidentialité).
 
-## 3. Sécurité des Secrets & du Socle `.pro-pilot/`
-- Ne jamais committer ni afficher en clair le fichier `.env` ou la clé `PRO_WEB_API_KEY`.
+## 3. Sécurité des Secrets, Anti-TOCTOU Daily & Socle `.pro-pilot/`
+- Ne jamais committer ni afficher en clair le fichier `.env` ou les clés `PRO_WEB_API_KEY`, `SFMC_CLIENT_SECRET` et `WP_APP_PASSWORD_*`.
+- Pour toute publication via `daily-publisher`, vérifier systématiquement en fail-closed le scellement `SHA-256` (`manifest.previewHash` + égalité stricte de `editable-email.html` et `editable-article.html`), bloquer toute liste dont `sfmc_folder_status` commence par `"TEMPORIZED"`, sauvegarder l'existant dans `backups/` avant mise à jour et vérifier en `GET` le contenu réellement écrit sur Marketing Cloud et sur le site public.
 - Ne jamais modifier ni écrire de fichier dans le dossier `.pro-pilot/` (le profil utilisateur local est stocké dans `./.pro-pilot-profile.md` à la racine du dépôt partenaire).

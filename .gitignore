@@ -6,5 +6,8 @@ __pycache__/
 dist/
 backups/
 sites/
+preview-*.html
+editable-*.html
+editable-meta.json
 .env
 .env.local
