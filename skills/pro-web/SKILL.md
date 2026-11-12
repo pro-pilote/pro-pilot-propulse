@@ -1,9 +1,9 @@
 ---
 name: pro-web
-description: Creation, import, retouche et publication d'objets web sur Pro Web via l'API officielle.
+description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle.
 ---
 
-# Commande /pro-web — Creation, Import et Publication d'Objets Web
+# Commande /pro-web — Creation, Retouche et Publication d'Objets Web
 
 Cette commande standardise et automatise toutes les operations sur l'infrastructure Pro Web via son API publique officielle (`https://api-pro-web.propulse-lab.com`). Elle fonctionne de maniere universelle sans aucune donnee codee en dur.
 
@@ -15,12 +15,12 @@ Avant toute operation, lis le contexte du depot local :
 
 1. **Variables d'environnement** :
    - Chargees automatiquement via `set -a; source .env; set +a`.
-   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
-   - `PARTNER_ID` : Identifiant numerique du partenaire.
+   - `PRO_WEB_API_KEY` : Cle d'acces API Pro Web (transmise via le header `x-api-key`).
 
-2. **Table des sites et domaines du partenaire** :
-   - Fichier source : `outils/pro-web-uploader/variables.md` (ou `outils/pro-web-page-creator/variables.md`).
-   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur.
+2. **Table des sites, domaines et identifiants partenaires** :
+   - Fichier source : `outils/pro-web-uploader/variables.md`.
+   - Resolution du triplet `(partnerId, websiteId, domainName)` selon le domaine cible.
+   - Attention : `partnerId=9` correspond uniquement aux sites internes Propulse Lab. Les sites des autres partenaires utilisent leur propre `partnerId` specifie dans la table (Biosante=2, VivaSante=4, Pantheon=12, Optima=21, Tao=23, APS=24, Inse=25, LFP=26).
 
 3. **Donnees business et design system** :
    - Charte visuelle : `donnees-business/design-system.md` (couleurs primaires, polices, espacements).
@@ -67,7 +67,7 @@ Toute page HTML (`PAGE`) publiee directement sur Pro Web doit contenir les scrip
 
 ## 4. Nomenclature des Types et Sous-Types Pro Web (SSOT)
 
-Lors des appels `POST /objects/upload-page` et `POST /objects/upsert`, utiliser exclusivement les valeurs d'enumeration conformes au backend :
+Lors des appels `POST /objects/upsert`, utiliser exclusivement les valeurs d'enumeration conformes au backend :
 
 ### Types (`type`)
 - `PAGE` : Page web HTML.
@@ -90,55 +90,9 @@ Lors des appels `POST /objects/upload-page` et `POST /objects/upsert`, utiliser 
 
 ## 5. Catalogue des Actions
 
-### Action A — Importer une URL externe (ex. Leadpages) vers Pro Web
+### Action A — Creer, retoucher et publier un objet (PAGE HTML ou DOCUMENT)
 
-Cette action extrait le contenu d'une page externe, rapatrie et optimise les images sur S3, nettoie les scripts tiers et genere l'objet Pro Web.
-
-1. **Controle pre-vol de l'URL source** :
-   - Verifier que l'URL est au format ASCII (`https://`).
-   - Verifier que l'URL repond en HTTP direct (code 200 sans redirection 301/302) et qu'il ne s'agit pas d'un PDF :
-     ```bash
-     curl -sI "<originalUrl>" | head -n 10
-     ```
-
-2. **Verification de collision** :
-   - Lister les objets existants sur le `websiteId` cible pour verifier si la `key` existe deja :
-     ```bash
-     set -a; source .env; set +a
-     curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=500"        -H "x-api-key: ${PRO_WEB_API_KEY}"
-     ```
-
-3. **Validation explicite de l'utilisateur** :
-   - Confirmer avec l'utilisateur dans le chat : domaine cible, `websiteId`, `key` (ex. `pages/ma-page`), sous-type (`PAGE:LEADGEN`, `PAGE:PAID`, etc.) et `originalUrl`.
-
-4. **Declenchement de l'import asynchrone** :
-   ```bash
-   set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upload-page"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
-       "websiteId": "'"${WEBSITE_ID}"'",
-       "partnerId": '"${PARTNER_ID}"',
-       "key": "pages/'"${SLUG}"'",
-       "type": "PAGE",
-       "subtype": "'"${SUBTYPE:-PAGE:LEADGEN}"'",
-       "originalUrl": "'"${ORIGINAL_URL}"'",
-       "hasIndexing": false
-     }'
-   ```
-
-5. **Polling et verification de mise en ligne** :
-   - Attendre la fin du traitement asynchrone (5 a 20 secondes).
-   - Verifier la presence du nouvel objet dans `GET /objects/list/${WEBSITE_ID}`.
-   - Tester l'URL publique finale :
-     ```bash
-     curl -sI "https://${DOMAIN_NAME}/pages/${SLUG}" | head -n 10
-     ```
-   - Confirmer la mise en ligne a l'utilisateur des que le serveur renvoie HTTP 200.
-
----
-
-### Action B — Creer, retoucher et publier un objet (PAGE HTML ou DOCUMENT)
-
-Cette action s'applique pour publier une nouvelle page creee de toutes pieces, pour retoucher le HTML d'une page importee ou pour televerser un document PDF.
+Cette action s'applique pour publier une nouvelle page creee de toutes pieces, pour retoucher le HTML d'une page existante ou pour televerser un document PDF.
 
 1. **Preparation et conformite du contenu** :
    - Integrer les variables produit et les styles du design system.
@@ -154,7 +108,10 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 3. **Etape 1 sur 3 API : Obtention de l'URL signee S3** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
+     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+     -H "Content-Type: application/json" \
+     -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "key": "'"${KEY}"'",
        "contentType": "text/html"
@@ -164,14 +121,19 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 
 4. **Etape 2 sur 3 API : Televersement binaire direct vers S3** :
    ```bash
-   curl -sS -X PUT "${SIGNED_URL}"      -H "Content-Type: text/html"      --data-binary @".tmp/preview-${SLUG}.html"
+   curl -sS -X PUT "${SIGNED_URL}" \
+     -H "Content-Type: text/html" \
+     --data-binary @".tmp/preview-${SLUG}.html"
    ```
    Remarque de securite S3 : ne pas ajouter de header `x-amz-acl`, l'autorisation est signee dans la query string.
 
 5. **Etape 3 sur 3 API : Enregistrement de l'objet en base (`upsert`)** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
+     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+     -H "Content-Type: application/json" \
+     -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "key": "'"${KEY}"'",
        "type": "PAGE",
@@ -192,40 +154,24 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 
 ---
 
-### Action C — Recharger une page externe existante (`reload-page`)
-
-Quand une page Leadpages source a ete modifiee et doit etre rafraichie sur Pro Web.
-
-1. **Garde-fous stricts avant rechargement** :
-   - Ne jamais appeler `reload-page` sur une page ayant subi des retouches manuelles directes dans Pro Web (ces retouches seraient ecrasees par le contenu source).
-   - Controle du lecteur video : si la page utilise Pro Video V2, verifier la correspondance des domaines autorises dans `domains_checker.json`.
-
-2. **Appel de rechargement** :
-   ```bash
-   set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}/reload-page"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "x-partner-id: ${PARTNER_ID}"
-   ```
-
-3. **Verification** : Poller `GET /objects/list/${WEBSITE_ID}` et verifier l'URL publique.
-
----
-
-### Action D — Lister ou inspecter les objets d'un site
+### Action B — Lister ou inspecter les objets d'un site
 
 Pour retrouver un `objectId`, une cle ou une date de mise a jour :
 ```bash
 set -a; source .env; set +a
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200"   -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200" \
+  -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
 
-### Action E — Supprimer un objet sur Pro Web
+### Action C — Supprimer un objet sur Pro Web
 
 Operation destructive soumise a validation humaine formelle prealable :
 ```bash
 set -a; source .env; set +a
-curl -sS -X DELETE "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}?partnerId=${PARTNER_ID}"   -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS -X DELETE "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}?partnerId=${PARTNER_ID}" \
+  -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
@@ -247,6 +193,6 @@ A chaque fois qu'un utilisateur apporte une correction, une precision de design,
 ## 7. Garde-fous et Principes d'Execution
 
 1. **Zero invention** : Toujours demander confirmation si une donnee business ou technique manque.
-2. **Validation humaine obligatoire** : Aucun appel d'ecriture (`upload-page`, `signed-url` + `PUT`, `upsert`, `reload-page`, `DELETE`) ne doit etre execute sans accord explicite de l'utilisateur dans l'echange en cours.
+2. **Validation humaine obligatoire** : Aucun appel d'ecriture (`signed-url` + `PUT`, `upsert`, `DELETE`) ne doit etre execute sans accord explicite de l'utilisateur dans l'echange en cours.
 3. **Securite des identifiants** : Ne jamais afficher la cle `PRO_WEB_API_KEY` dans les messages ou dans des fichiers versionnes.
 4. **Verification systematique** : Toujours verifier la reponse HTTP reelle (`curl -sI`) avant d'affirmer qu'une page est publiee.
