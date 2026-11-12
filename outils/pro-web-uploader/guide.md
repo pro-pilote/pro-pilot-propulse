@@ -75,11 +75,12 @@ curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partne
      -H "Content-Type: application/json" \
      -d '{
        "websiteId": "<websiteId>",
+       "partnerId": '"${PARTNER_ID}"',
        "key": "pages/mon-slug",
        "contentType": "text/html"
      }'
    ```
-   > La réponse JSON est de la forme `{"status": true, "data": "https://s3.eu-west-1.amazonaws.com/..."}`.
+   > Le champ `partnerId` (numérique) est obligatoire sous peine d'erreur `400 {"message": "Invalid request body"}`. La réponse JSON fournit l'URL présignée S3 dans le champ `data` : `{"status": true, "data": "https://s3.eu-west-1.amazonaws.com/..."}`.
 2. Téléverser le fichier binaire ou HTML sur l'URL présignée (`PUT <url>`) :
    ```bash
    curl -sS -i -X PUT "<url_presignee_s3>" \
@@ -96,6 +97,7 @@ curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
   -H "Content-Type: application/json" \
   -d '{
     "websiteId": "<websiteId>",
+    "partnerId": '"${PARTNER_ID}"',
     "key": "pages/mon-slug",
     "type": "PAGE",
     "subtype": "PAGE:PAID",
@@ -103,6 +105,7 @@ curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
     "hasIndexing": false
   }'
 ```
+> **Effet de bord important** : Après un upsert manuel, le champ `leadpageEditUrl` de l'objet passe à `null`. Une page retouchée ou publiée directement sur Pro Web S3 ne doit pas être écrasée depuis une source externe sans validation humaine explicite.
 - **Valeurs autorisées pour `type` et `subtype` (SSOT backend `EObjectSubtype`)** :
   - `type: "PAGE"` → `subtype` :
     - `"PAGE:LEADGEN"` : Page d'acquisition (opt-in, formulaire, inscription webinaire ou newsletter, quizz)
