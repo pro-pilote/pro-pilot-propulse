@@ -1,13 +1,34 @@
-.DS_Store
-node_modules/
-__pycache__/
-*.pyc
-.pro-pilot/
-dist/
+# Claude Code configuration & skills
+!.claude/
+!.claude/commands/
+!.claude/commands/**
+!.claude/skills/
+!.claude/skills/**
+
+# Fichiers ephemeres de previsualisation et pages (stockage exclusif sur Pro Web S3)
+*.html
+*.htm
+*.pdf
+.tmp/
+tmp/
+preview/
+pages/
 backups/
 sites/
 preview-*.html
 editable-*.html
 editable-meta.json
+
+# Identifiants et environnement
 .env
-.env.local
+.env.*
+!.env.example
+.pro-pilot-profile.md
+
+# Systeme et dependances
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+dist/
+.pro-pilot/

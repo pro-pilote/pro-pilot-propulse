@@ -61,9 +61,10 @@ curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partne
 ```
 - **Si la `key` cible existe déjà** : avertir l'utilisateur qu'il s'agit d'une **mise à jour (écrasement)** et sauvegarder la version en ligne dans `backups/<key>` (`curl -sS "<urlPublic>" -o "backups/..."`) avant toute écriture.
 
-### Étape 2 — Prévisualisation locale & Validation Humaine (Obligatoire)
-1. Ouvrir le fichier HTML local dans le navigateur (`open page.html` sur macOS) ou lancer un serveur HTTP local (`python3 -m http.server 8080`).
-2. **STOP** : Demander la confirmation explicite de l'utilisateur dans le chat (*« L'aperçu local sur `<domaine>/<key>` est-il validé pour publication en production ? »*) avant d'exécuter les étapes 3 et 4.
+### Étape 2 — Prévisualisation locale éphémère & Validation Humaine (Obligatoire)
+1. Générer le fichier dans le dossier local éphémère `.tmp/` (`.tmp/preview-mon-slug.html`, ignoré par Git).
+2. Ouvrir le fichier HTML local dans le navigateur (`open .tmp/preview-mon-slug.html` sur macOS) ou lancer un serveur HTTP local (`python3 -m http.server 8080`).
+3. **STOP** : Demander la confirmation explicite de l'utilisateur dans le chat (*« L'aperçu local sur `<domaine>/<key>` est-il validé pour publication en production ? »*) avant d'exécuter les étapes 3 et 4. Ne jamais committer ce fichier HTML sur Git.
 
 ### Étape 3 — Obtenir une URL S3 présignée et téléverser le fichier (`signed-url` → `PUT S3`)
 1. Demander une URL présignée (`POST /objects/signed-url`, valide `3600` secondes) :
@@ -74,17 +75,16 @@ curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partne
      -H "Content-Type: application/json" \
      -d '{
        "websiteId": "<websiteId>",
-       "partnerId": <partnerId>,
        "key": "pages/mon-slug",
        "contentType": "text/html"
      }'
    ```
-   > La réponse JSON est de la forme `{"url": "https://s3.eu-west-1.amazonaws.com/...", "data": "https://s3.eu-west-1.amazonaws.com/..."}`.
+   > La réponse JSON est de la forme `{"status": true, "data": "https://s3.eu-west-1.amazonaws.com/..."}`.
 2. Téléverser le fichier binaire ou HTML sur l'URL présignée (`PUT <url>`) :
    ```bash
    curl -sS -i -X PUT "<url_presignee_s3>" \
      -H "Content-Type: text/html" \
-     --data-binary "@page.html"
+     --data-binary "@.tmp/preview-mon-slug.html"
    ```
    > **Piège S3 critique** : L'ACL `bucket-owner-full-control` est déjà signée dans la query-string de l'URL présignée. **Ne jamais ajouter le header `x-amz-acl` lors du `PUT`** (sinon S3 refuse avec `403 AccessDenied`). N'envoyer que le header `Content-Type` strictement identique à celui demandé à `signed-url`.
 
@@ -96,17 +96,25 @@ curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
   -H "Content-Type: application/json" \
   -d '{
     "websiteId": "<websiteId>",
-    "partnerId": <partnerId>,
     "key": "pages/mon-slug",
     "type": "PAGE",
-    "subtype": "PAGE:OTHER",
+    "subtype": "PAGE:PAID",
     "originalFileName": "page.html",
     "hasIndexing": false
   }'
 ```
-- **Valeurs autorisées pour `type` et `subtype`** :
-  - `type: "PAGE"` → `subtype` : `"PAGE:OTHER"` *(défaut recommandé)*, `"PAGE:LEADGEN"`, `"PAGE:VSL"`, `"PAGE:OPTIN"`, `"PAGE:SALES"`, `"PAGE:THANKYOU"`.
-  - `type: "DOCUMENT"` → `subtype` : `"DOCUMENT:PDF"`, `"DOCUMENT:IMAGE"`, `"DOCUMENT:OTHER"`.
+- **Valeurs autorisées pour `type` et `subtype` (SSOT backend `EObjectSubtype`)** :
+  - `type: "PAGE"` → `subtype` :
+    - `"PAGE:LEADGEN"` : Page d'acquisition (opt-in, formulaire, inscription webinaire ou newsletter, quizz)
+    - `"PAGE:CONFIRMATION"` : Page de confirmation et remerciement (fin de parcours)
+    - `"PAGE:VIDEO"` : Page vidéo (VDT / VSL, replay de webinaire)
+    - `"PAGE:PAID"` : Copie de vente ou page produit payante
+    - `"PAGE:OTHER"` : Page diverse non catégorisée (mentions légales, CGV)
+  - `type: "DOCUMENT"` → `subtype` :
+    - `"DOCUMENT:PDF"` : Document PDF
+    - `"DOCUMENT:IMAGE"` : Image web (PNG, JPEG, WebP, SVG)
+    - `"DOCUMENT:TEXT"` : Fichier texte, CSS, JavaScript, JSON
+    - `"DOCUMENT:OTHER"` : Autre document binaire
 - Cet appel crée ou met à jour l'enregistrement MongoDB (`s3objects`), déclenche l'invalidation CloudFront (`/<key>` et `/<key>_assets/*`) et retourne l'objet avec son `urlPublic`.
 
 ### Étape 5 — Vérification Post-Publication (Obligatoire)

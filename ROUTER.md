@@ -9,6 +9,7 @@ Les pages de Pro-Pilot sont articulées de manière **atomique** : ne charge jam
 
 1. Consulte [`getting-started/README.md`](./getting-started/README.md) pour les instructions de mise en route et le questionnaire initial.
 2. Consulte [`regles/glossaire.md`](./regles/glossaire.md) pour la terminologie métier (Objet Pro Web `PAGE`/`DOCUMENT`, LP, STATIC, GTM, BU, Design System).
+3. Pour toute exécution standardisée (création, import Leadpages, publication, retouche), active la skill universelle [`skills/pro-web/SKILL.md`](./skills/pro-web/SKILL.md).
 
 ---
 
@@ -27,11 +28,11 @@ Identifie l'intention et consulte uniquement les fichiers correspondants :
 ## Étape 3 — Interaction ou Action
 
 1. **Si une information essentielle manque** (ex. produit concerné, `websiteId`, `key` de l'objet ou `originalUrl`) : applique [`regles/clarification.md`](./regles/clarification.md) et pose 1 à 3 questions précises avant de générer ou d'appeler l'API.
-2. **Si toutes les informations sont réunies** : génère le fichier HTML complet en respectant `erreurs-connues.md`, ouvre l'aperçu local dans le navigateur et attends la validation explicite de l'utilisateur avant tout appel d'écriture sur `https://api-pro-web.propulse-lab.com`.
+2. **Si toutes les informations sont réunies** : génère le fichier HTML complet dans le dossier éphémère `.tmp/` en respectant `erreurs-connues.md` (aucun fichier HTML ne doit être committé sur Git), ouvre l'aperçu local dans le navigateur et attends la validation explicite de l'utilisateur avant tout appel d'écriture sur `https://api-pro-web.propulse-lab.com`.
 
 ---
 
 ## Étape 4 — Boucle d'Amélioration Continue
 
 Dès que l'utilisateur corrige l'IA sur une règle, un style ou une spécificité :
-- Applique [`regles/amelioration-continue-letta.md`](./regles/amelioration-continue-letta.md) pour consigner la règle dans `erreurs-connues.md` ou ouvrir une Issue via `.github/ISSUE_TEMPLATE/feedback.yml`.
+- Applique immédiatement [`.claude/commands/feedback.md`](./.claude/commands/feedback.md) (ou la commande `/feedback`) pour enregistrer la règle dans `specificites.md`, `erreurs-connues.md` ou `donnees-business/` et synchroniser le dépôt en tâche de fond.
