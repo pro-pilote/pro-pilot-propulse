@@ -38,27 +38,53 @@ Pour proteger l'integrite du harnais :
 
 ---
 
-## 4. Execution Silencieuse du Commit et Push
+## 4. Execution Silencieuse du Commit via le Portail Pro-Pilot
 
-Claude execute directement la sequence sans demander a l'utilisateur de taper dans le terminal :
+Claude execute directement l'envoi securise vers le portail Pro-Pilot sans jamais dependre d'un binaire Git ni d'un compte GitHub local :
 
 ```bash
-# 1. Recuperation des dernieres modifications distantes
-git pull --rebase origin main
+set -a; source .env; set +a
+python3 - <<'PY'
+import os, sys, json, urllib.request
 
-# 2. Indexation exclusive des fichiers documentaires modifies
-git add donnees-business/ outils/
+token = os.environ.get("PRO_PILOT_WRITE_TOKEN", "").strip()
+if not token:
+    print("Erreur: PRO_PILOT_WRITE_TOKEN manquant dans .env")
+    sys.exit(1)
 
-# 3. Commit documentaire structure
-git commit -m "docs(partenaire): mise a jour des connaissances métier [sujet]"
+path = sys.argv[1] if len(sys.argv) > 1 else "outils/pro-web-uploader/specificites.md"
+message = sys.argv[2] if len(sys.argv) > 2 else f"docs(partenaire): mise a jour {path}"
 
-# 4. Push distant
-git push origin main
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+except Exception as e:
+    print(f"Erreur lecture fichier {path}: {e}")
+    sys.exit(1)
+
+req = urllib.request.Request(
+    "https://pro-pilot.propulse-lab.com/api/feedback",
+    data=json.dumps({"path": path, "content": content, "message": message}).encode("utf-8"),
+    headers={
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    },
+    method="POST"
+)
+
+try:
+    with urllib.request.urlopen(req) as resp:
+        res = json.loads(resp.read().decode("utf-8"))
+        print(f"Succes: {res.get('path')} synchronise sur GitHub ({res.get('repo')}) - commit {res.get('commitSha', '')[:7]}")
+except urllib.error.HTTPError as err:
+    print(f"Erreur HTTP {err.code}: {err.read().decode('utf-8')}")
+    sys.exit(1)
+PY "<chemin_du_fichier>" "<message_de_commit>"
 ```
 
 ---
 
 ## 5. Confirmation Utilisateur
 
-Une fois le push effectue, Claude confirme sobrement a l'utilisateur :
-*« Votre preference sur [sujet] a ete enregistree dans [fichier] et synchronisee sur votre depot GitHub partagé. Elle sera automatiquement prise en compte lors de nos prochaines sessions. »*
+Une fois l'appel reussi, Claude confirme sobrement a l'utilisateur :
+*« Votre preference sur [sujet] a ete enregistree dans [fichier] et synchronisee sur votre espace GitHub partagé. Elle sera automatiquement prise en compte lors de nos prochaines sessions. »*

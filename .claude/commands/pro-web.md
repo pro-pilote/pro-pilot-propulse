@@ -11,11 +11,11 @@ Avant toute operation, lis le contexte du depot local :
 1. **Variables d'environnement** :
    - Chargees automatiquement via `set -a; source .env; set +a`.
    - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
-   - `PARTNER_ID` : Identifiant numerique du partenaire (ex. `25` pour Institut de l'Epargne).
+   - `PARTNER_ID` : Identifiant numerique du partenaire.
 
 2. **Table des sites et domaines du partenaire** :
    - Fichier source : `outils/pro-web-uploader/variables.md` (ou `outils/pro-web-page-creator/variables.md`).
-   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur (ex. `6848393f0c2fad434b8daf02` pour `www.institutdelepargne.com`).
+   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur.
 
 3. **Donnees business et design system** :
    - Charte visuelle : `donnees-business/design-system.md` (couleurs primaires, polices, espacements).
@@ -100,8 +100,7 @@ Cette action extrait le contenu d'une page externe, rapatrie et optimise les ima
    - Lister les objets existants sur le `websiteId` cible pour verifier si la `key` existe deja :
      ```bash
      set -a; source .env; set +a
-     curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=500" \
-       -H "x-api-key: ${PRO_WEB_API_KEY}"
+     curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=500"        -H "x-api-key: ${PRO_WEB_API_KEY}"
      ```
 
 3. **Validation explicite de l'utilisateur** :
@@ -110,10 +109,7 @@ Cette action extrait le contenu d'une page externe, rapatrie et optimise les ima
 4. **Declenchement de l'import asynchrone** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upload-page" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "Content-Type: application/json" \
-     -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upload-page"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "partnerId": '"${PARTNER_ID}"',
        "key": "pages/'"${SLUG}"'",
@@ -153,10 +149,7 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 3. **Etape 1 sur 3 API : Obtention de l'URL signee S3** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "Content-Type: application/json" \
-     -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "key": "'"${KEY}"'",
        "contentType": "text/html"
@@ -166,19 +159,14 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 
 4. **Etape 2 sur 3 API : Televersement binaire direct vers S3** :
    ```bash
-   curl -sS -X PUT "${SIGNED_URL}" \
-     -H "Content-Type: text/html" \
-     --data-binary @".tmp/preview-${SLUG}.html"
+   curl -sS -X PUT "${SIGNED_URL}"      -H "Content-Type: text/html"      --data-binary @".tmp/preview-${SLUG}.html"
    ```
    Remarque de securite S3 : ne pas ajouter de header `x-amz-acl`, l'autorisation est signee dans la query string.
 
 5. **Etape 3 sur 3 API : Enregistrement de l'objet en base (`upsert`)** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "Content-Type: application/json" \
-     -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "key": "'"${KEY}"'",
        "type": "PAGE",
@@ -210,9 +198,7 @@ Quand une page Leadpages source a ete modifiee et doit etre rafraichie sur Pro W
 2. **Appel de rechargement** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}/reload-page" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "x-partner-id: ${PARTNER_ID}"
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}/reload-page"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "x-partner-id: ${PARTNER_ID}"
    ```
 
 3. **Verification** : Poller `GET /objects/list/${WEBSITE_ID}` et verifier l'URL publique.
@@ -224,8 +210,7 @@ Quand une page Leadpages source a ete modifiee et doit etre rafraichie sur Pro W
 Pour retrouver un `objectId`, une cle ou une date de mise a jour :
 ```bash
 set -a; source .env; set +a
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200" \
-  -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200"   -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
@@ -235,8 +220,7 @@ curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partne
 Operation destructive soumise a validation humaine formelle prealable :
 ```bash
 set -a; source .env; set +a
-curl -sS -X DELETE "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}?partnerId=${PARTNER_ID}" \
-  -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS -X DELETE "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}?partnerId=${PARTNER_ID}"   -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
@@ -251,7 +235,7 @@ A chaque fois qu'un utilisateur apporte une correction, une precision de design,
    - Produits : `donnees-business/<sku>/fiche-produit.md`
    - Regles editoriales : `outils/pro-web-uploader/specificites.md`
    - Erreurs et pieges : `outils/pro-web-uploader/erreurs-connues.md`
-3. **Commit et push silencieux** : Si l'utilisateur confirme, Claude met a jour le fichier Markdown et effectue le commit/push sans que l'utilisateur n'ait a toucher au terminal (voir `/feedback`).
+3. **Commit et push silencieux via le portail** : Si l'utilisateur confirme, Claude met a jour le fichier Markdown et appelle l'API `/api/feedback` de facon transparente sans toucher au terminal ni a Git (voir `/feedback`).
 
 ---
 

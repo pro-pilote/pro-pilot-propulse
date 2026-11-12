@@ -1,6 +1,7 @@
-# Instructions Agent IA — Pro-Pilot Propulse Lab
+# Instructions Agent IA — Propulse Lab (Socle Interne)
 
-1. Lis immédiatement [`./RULES.md`](./RULES.md) et [`./ROUTER.md`](./ROUTER.md).
-2. Ce dépôt est le socle central `pro-pilot-propulse` (outils partagés, règles transverses, architecture multi-partenaires).
-3. Le fichier `.env` local contient `PRO_WEB_API_KEY` et `PARTNER_ID=9` (domaine de test `test.propulse-lab.com`).
-4. Demande toujours confirmation humaine avant toute écriture API ou push git.
+1. **Règles et Routeur** : Consulte immédiatement [`./RULES.md`](./RULES.md) et [`./ROUTER.md`](./ROUTER.md).
+2. **Opérations Pro Web** : Pour toute demande relative à la création, l'import d'une page externe (ex. Leadpages), la retouche, la prévisualisation ou la publication d'une landing page ou d'un document sur Pro Web, lis et applique immédiatement [`./.claude/commands/pro-web.md`](./.claude/commands/pro-web.md) (disponible également dans [`./.claude/skills/pro-web/SKILL.md`](./.claude/skills/pro-web/SKILL.md) et via la commande `/pro-web`).
+3. **Résolution des Identifiants** : Résous le couple `(domainName, websiteId)` depuis [`outils/pro-web-uploader/variables.md`](./outils/pro-web-uploader/variables.md). Demande systématiquement une confirmation humaine explicite à l'utilisateur avant tout appel d'écriture sur l'API Pro Web.
+4. **Zéro HTML sur Git** : Ne jamais committer de fichiers HTML, HTM ou PDF sur le dépôt Git. Utiliser exclusivement le dossier éphémère `.tmp/` pour la prévisualisation locale. Les pages sont hébergées et publiées uniquement sur Pro Web (S3).
+5. **Auto-Alimentation Continue** : Lorsqu'une correction, un ajustement de design, une nouvelle règle métier ou une fiche produit est formulée par l'utilisateur, applique immédiatement [`./.claude/commands/feedback.md`](./.claude/commands/feedback.md) (ou la commande `/feedback`) pour enregistrer la connaissance et synchroniser le dépôt en tâche de fond via le portail Pro-Pilot.
