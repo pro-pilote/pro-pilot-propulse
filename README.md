@@ -12,6 +12,9 @@ pro-pilot-propulse/
 ├── getting-started/                       # Onboarding & Prérequis
 │   ├── README.md                          # Guide d'onboarding local
 │   └── prerequis.md                       # Prérequis & configuration de la clé PRO_WEB_API_KEY
+├── skills/                                 # // SKILLS UNIVERSELLES (Exécution Claude / Antigravity)
+│   └── pro-web/
+│       └── SKILL.md                       # Création, import Leadpages, retouche et publication Pro Web
 ├── regles/                                # // REGLES (Socle de fonctionnement IA commun)
 │   ├── README.md                          # Index des règles
 │   ├── glossaire.md                       # Terminologie métier unifiée (LP, STATIC, GTM, BU)

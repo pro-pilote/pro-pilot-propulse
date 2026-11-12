@@ -17,3 +17,9 @@
 - Ne jamais committer ni afficher en clair le fichier `.env` ou les clés `PRO_WEB_API_KEY`, `SFMC_CLIENT_SECRET` et `WP_APP_PASSWORD_*`.
 - Pour toute publication via `daily-publisher`, vérifier systématiquement en fail-closed le scellement `SHA-256` (`manifest.previewHash` + égalité stricte de `editable-email.html` et `editable-article.html`), bloquer toute liste dont `sfmc_folder_status` commence par `"TEMPORIZED"`, sauvegarder l'existant dans `backups/` avant mise à jour et vérifier en `GET` le contenu réellement écrit sur Marketing Cloud et sur le site public.
 - Ne jamais modifier ni écrire de fichier dans le dossier `.pro-pilot/` (le profil utilisateur local est stocké dans `./.pro-pilot-profile.md` à la racine du dépôt partenaire).
+
+## 4. Alimentation du Dépôt Partenaire & Périmètre d'Écriture
+- Le partenaire a vocation à enrichir en continu son propre dépôt avec ses spécificités métier au format standardisé.
+- Périmètre autorisé en écriture : `donnees-business/**` (fiches produits, design system) et `outils/**` (`variables.md`, `specificites.md`, `erreurs-connues.md`, `guide.md`).
+- Périmètre strictement protégé (lecture seule) : `tools/**`, `.github/**`, `regles/**`, `ROUTER.md`, `RULES.md`, `.gitignore`, scripts exécutables.
+- Signature des commits : committer `it-pro-pilot <it-pro-pilot@users.noreply.github.com>`, auteur `<sub_email>`, authentification via jeton nominatif 6 mois (`pro-pilot-auth.cfg`, expiration 180 jours = 15 552 000 secondes).

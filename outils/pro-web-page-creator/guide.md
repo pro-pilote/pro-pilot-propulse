@@ -40,11 +40,12 @@ curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upload-page" \
     "partnerId": <partnerId>,
     "key": "pages/mon-slug",
     "type": "PAGE",
-    "subtype": "PAGE:OTHER",
+    "subtype": "PAGE:LEADGEN",
     "originalUrl": "https://mon-compte.lpages.co/ma-page/",
     "hasIndexing": false
   }'
 ```
+- **Sous-types valides pour `PAGE`** : `PAGE:LEADGEN` (acquisition/opt-in), `PAGE:CONFIRMATION` (merci), `PAGE:VIDEO` (vidéo), `PAGE:PAID` (copie de vente), `PAGE:OTHER` (divers).
 
 ### Étape 3 — Recharger une page existante depuis son `originalUrl` (`POST /objects/{objectId}/reload-page`)
 Si l'objet `PAGE` existe déjà (identifié par son `_id` MongoDB `objectId` dans `GET /objects/list/{websiteId}`) et que son `originalUrl` a été modifiée à la source :
