@@ -10,12 +10,12 @@ Avant toute operation, lis le contexte du depot local :
 
 1. **Variables d'environnement** :
    - Chargees automatiquement via `set -a; source .env; set +a`.
-   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
-   - `PARTNER_ID` : Identifiant numerique du partenaire.
+   - `PRO_WEB_API_KEY` : Cle d'acces API Pro Web (transmise via le header `x-api-key`).
 
-2. **Table des sites et domaines du partenaire** :
-   - Fichier source : `outils/pro-web-uploader/variables.md` (ou `outils/pro-web-page-creator/variables.md`).
-   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur.
+2. **Table des sites, domaines et identifiants partenaires** :
+   - Fichier source : `outils/pro-web-uploader/variables.md`.
+   - Resolution du triplet `(partnerId, websiteId, domainName)` selon le domaine cible.
+   - Attention : `partnerId=9` correspond uniquement aux sites internes Propulse Lab. Les sites des autres partenaires utilisent leur propre `partnerId` specifie dans la table (Biosante=2, VivaSante=4, Pantheon=12, Optima=21, Tao=23, APS=24, Inse=25, LFP=26).
 
 3. **Donnees business et design system** :
    - Charte visuelle : `donnees-business/design-system.md` (couleurs primaires, polices, espacements).
