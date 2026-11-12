@@ -1,5 +1,8 @@
 # Guide Universel — `daily-publisher` (Email Marketing Cloud & Article Blog / Statique)
 
+> **Statut : En cours de développement (Work in Progress)**
+> Cet outil est actuellement en cours de développement actif. La publication automatisée de bout en bout sera déployée prochainement.
+
 Ce guide définit le protocole universel de génération, de prévisualisation locale en **2 étapes non-techniques** (**① Daily Email** $\rightarrow$ **② Article sur le blog**) et de publication multi-canal via l'**API REST Salesforce Marketing Cloud**, l'**API REST WordPress** (`type: "BLOG"`) ou l'**API Pro Web** (`type: "STATIC"`).
 
 ---

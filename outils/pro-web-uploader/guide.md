@@ -14,7 +14,7 @@
 
 ## 2. Scripts Pro Web Obligatoires & Catalogue `cdn.info-contenu.io`
 
-Contrairement à `upload-page` (qui exécute `cleanScripts` côté serveur), la publication directe d'un fichier HTML via `signed-url` → `PUT S3` → `upsert` envoie votre HTML **tel quel** sur S3. Vous devez donc inclure explicitement les scripts Pro Web dans votre HTML :
+La publication directe d'un fichier HTML via `signed-url` → `PUT S3` → `upsert` envoie votre HTML **tel quel** sur S3. Vous devez donc inclure explicitement les scripts Pro Web dans votre HTML :
 
 ### A. Les 3 blocs obligatoires sur toute Landing Page / Page de Vente (`PAGE`)
 1. **`headerTools.js` (dans `<head>`, juste avant `</head>`)** — fournit `getParameterByName(name)` avec échappement XSS :

@@ -1,9 +1,9 @@
 # Garde-fous de Sécurité & Préservation de la Production
 
 ## 1. Validation Humaine Obligatoire avant toute Écriture S3 / API
-- Toute action qui crée, modifie ou supprime un objet en production (`POST /objects/signed-url` + `PUT <signedUrl>`, `POST /objects/upsert`, `POST /objects/upload-page`, `POST /objects/{objectId}/reload-page`, `DELETE /objects`) exige :
+- Toute action qui crée, modifie ou supprime un objet en production (`POST /objects/signed-url` + `PUT <signedUrl>`, `POST /objects/upsert`, `DELETE /objects`) exige :
   1. Un contrôle préalable via `GET /objects/list/{websiteId}` pour vérifier si la `key` existe déjà (et, en cas de mise à jour, une sauvegarde locale de la version en ligne dans `backups/`).
-  2. La validation locale de l'aperçu par l'utilisateur (ou la vérification `curl -sI` de l'`originalUrl` pour un import).
+  2. La validation locale de l'aperçu par l'utilisateur.
   3. **L'accord explicite de l'utilisateur dans le chat** en précisant le domaine cible, le `websiteId` correspondant et la `key` exacte avant d'exécuter les requêtes HTTP d'écriture.
 
 ## 2. Protection des Scripts Pro Web (`headerTools.js`, `preserveParamsV2.js`, `GTM`, `leadBox`)
