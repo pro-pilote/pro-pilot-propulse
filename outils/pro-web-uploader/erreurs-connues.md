@@ -1,5 +1,12 @@
 # Erreurs Connues — Pro Web Uploader (Socle Pro-Pilot)
 
+- **Suppression d'objets non autorisée en v1 (Sécurité)** :
+  - **Symptôme** : L'appel `DELETE /objects/{objectId}` échoue avec `403 Missing Authentication Token` (aucune route DELETE n'est exposée sur l'API publique).
+  - **Règle de sécurité** : Par mesure de sécurité, aucune route DELETE n'est ouverte sur l'API publique en v1. L'assistant IA n'exécute aucune suppression. Toute suppression définitive doit être réalisée manuellement par un opérateur humain depuis l'interface web Pro Web.
+- **Sur les sites `STATIC`, les URL avec slash de dossier `/<slug>/` renvoient `500` (pas d'index automatique)** :
+  - **Symptôme** : Une page publiée avec la `key` `<slug>/index.html` répond `200` sur `https://<domaine>/<slug>/index.html`, mais renvoie une erreur `500` sur `https://<domaine>/<slug>/` et `https://<domaine>/<slug>`. Pro Web ne réalise aucune réécriture automatique de dossier vers `index.html` (seule la racine `/` sert `index.html`).
+  - **Solution appliquée** : Pour toute URL propre sans extension, utiliser une `key` sans extension ni slash final (ex. `articles/<slug>` ou `<slug>`), servie en `text/html`. Aligner tous les liens internes, le tag `canonical` et le `sitemap.xml` sur cette URL exacte. Toujours contrôler l'URL réelle `curl -sI "https://<domaine>/<key>"` sans slash final.
+
 - **400 Bad Request sur `POST /objects/signed-url` ("Invalid request body")** :
   - **Symptôme** : L'API renvoie `400 {"message": "Invalid request body"}` si le corps JSON ne contient que `websiteId`, `key` et `contentType`.
   - **Solution** : Ajouter impérativement `"partnerId": ${PARTNER_ID}` (numérique, ex. `4` pour VivaSanté, `2` pour Biosanté, `12` pour Panthéon) dans le payload JSON de `POST /objects/signed-url`. Inclure également `"partnerId": ${PARTNER_ID}` dans `POST /objects/upsert` par cohérence.
