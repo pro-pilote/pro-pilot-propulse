@@ -15,12 +15,12 @@ Avant toute operation, lis le contexte du depot local :
 
 1. **Variables d'environnement** :
    - Chargees automatiquement via `set -a; source .env; set +a`.
-   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
-   - `PARTNER_ID` : Identifiant numerique du partenaire.
+   - `PRO_WEB_API_KEY` : Cle d'acces API Pro Web (transmise via le header `x-api-key`).
 
-2. **Table des sites et domaines du partenaire** :
+2. **Table des sites, domaines et identifiants partenaires** :
    - Fichier source : `outils/pro-web-uploader/variables.md`.
-   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur.
+   - Resolution du triplet `(partnerId, websiteId, domainName)` selon le domaine cible.
+   - Attention : `partnerId=9` correspond uniquement aux sites internes Propulse Lab. Les sites des autres partenaires utilisent leur propre `partnerId` specifie dans la table (Biosante=2, VivaSante=4, Pantheon=12, Optima=21, Tao=23, APS=24, Inse=25, LFP=26).
 
 3. **Donnees business et design system** :
    - Charte visuelle : `donnees-business/design-system.md` (couleurs primaires, polices, espacements).
@@ -108,7 +108,10 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 3. **Etape 1 sur 3 API : Obtention de l'URL signee S3** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
+     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+     -H "Content-Type: application/json" \
+     -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "partnerId": '"${PARTNER_ID}"',
        "key": "'"${KEY}"'",
@@ -119,14 +122,19 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 
 4. **Etape 2 sur 3 API : Televersement binaire direct vers S3** :
    ```bash
-   curl -sS -X PUT "${SIGNED_URL}"      -H "Content-Type: text/html"      --data-binary @".tmp/preview-${SLUG}.html"
+   curl -sS -X PUT "${SIGNED_URL}" \
+     -H "Content-Type: text/html" \
+     --data-binary @".tmp/preview-${SLUG}.html"
    ```
    Remarque de securite S3 : ne pas ajouter de header `x-amz-acl`, l'autorisation est signee dans la query string.
 
 5. **Etape 3 sur 3 API : Enregistrement de l'objet en base (`upsert`)** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
+     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+     -H "Content-Type: application/json" \
+     -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "partnerId": '"${PARTNER_ID}"',
        "key": "'"${KEY}"'",
@@ -142,7 +150,7 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
    ```bash
    curl -sI "https://${DOMAIN_NAME}/${KEY}" | head -n 10
    ```
-   La reponse doit afficher `HTTP/2 200` et `content-type: text/html`.
+   La reponse doit afficher `HTTP/2 200` et `content-type: text/html`. Ne pas ajouter de slash final sur les sites `STATIC` sous peine d'erreur `500`.
 
 7. **Nettoyage ephemere** :
    - Le fichier `.tmp/preview-${SLUG}.html` peut etre supprime ou conserve dans `.tmp/` sans risque pour Git.
@@ -154,17 +162,8 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 Pour retrouver un `objectId`, une cle ou une date de mise a jour :
 ```bash
 set -a; source .env; set +a
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200"   -H "x-api-key: ${PRO_WEB_API_KEY}"
-```
-
----
-
-### Action C — Supprimer un objet sur Pro Web
-
-Operation destructive soumise a validation humaine formelle prealable :
-```bash
-set -a; source .env; set +a
-curl -sS -X DELETE "https://api-pro-web.propulse-lab.com/objects/${OBJECT_ID}?partnerId=${PARTNER_ID}"   -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200" \
+  -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
@@ -186,6 +185,7 @@ A chaque fois qu'un utilisateur apporte une correction, une precision de design,
 ## 7. Garde-fous et Principes d'Execution
 
 1. **Zero invention** : Toujours demander confirmation si une donnee business ou technique manque.
-2. **Validation humaine obligatoire** : Aucun appel d'ecriture (`signed-url` + `PUT`, `upsert`, `DELETE`) ne doit etre execute sans accord explicite de l'utilisateur dans l'echange en cours.
-3. **Securite des identifiants** : Ne jamais afficher la cle `PRO_WEB_API_KEY` dans les messages ou dans des fichiers versionnes.
-4. **Verification systematique** : Toujours verifier la reponse HTTP reelle (`curl -sI`) avant d'affirmer qu'une page est publiee.
+2. **Validation humaine obligatoire** : Aucun appel d'ecriture (`signed-url` + `PUT`, `upsert`) ne doit etre execute sans accord explicite de l'utilisateur dans l'echange en cours.
+3. **Suppression non autorisee par API en v1** : Par mesure de securite, aucune commande de suppression d'objet n'est executee par l'assistant. Toute suppression doit etre effectuee manuellement par un operateur humain sur l'interface web Pro Web.
+4. **Securite des identifiants** : Ne jamais afficher la cle `PRO_WEB_API_KEY` dans les messages ou dans des fichiers versionnes.
+5. **Verification systematique** : Toujours verifier la reponse HTTP reelle (`curl -sI`) sans slash final avant d'affirmer qu'une page est publiee.
