@@ -2,8 +2,8 @@
 
 ## Étape 1 — Détection de l'Intention
 
-1. **Création ou modification directe d'une page HTML ou d'un document PDF/image** $\rightarrow$ [Action A — Pro Web Uploader](.claude/commands/pro-web.md#action-a--creer-retoucher-et-publier-un-objet-page-html-ou-document)
-2. **Inspection / inventaire des objets d'un site** $\rightarrow$ [Action B — Liste des objets](.claude/commands/pro-web.md#action-b--lister-ou-inspecter-les-objets-dun-site)
+1. **Création ou modification directe d'une page HTML ou d'un document PDF/image** $ightarrow$ [Action A — Pro Web Uploader](.claude/commands/pro-web.md#action-a--creer-retoucher-et-publier-un-objet-page-html-ou-document)
+2. **Inspection / inventaire des objets d'un site** $ightarrow$ [Action B — Liste des objets](.claude/commands/pro-web.md#action-b--lister-ou-inspecter-les-objets-dun-site)
 
 *(Rappel de sécurité : La suppression d'objets n'est pas autorisée par API en v1. Toute suppression définitive doit être effectuée manuellement par un opérateur humain depuis l'interface web Pro Web).*
 

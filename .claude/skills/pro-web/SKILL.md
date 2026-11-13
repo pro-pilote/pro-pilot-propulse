@@ -15,12 +15,12 @@ Avant toute operation, lis le contexte du depot local :
 
 1. **Variables d'environnement** :
    - Chargees automatiquement via `set -a; source .env; set +a`.
-   - `PRO_WEB_API_KEY` : Cle d'acces API Pro Web (transmise via le header `x-api-key`).
+   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
+   - `PARTNER_ID` : Identifiant numerique du partenaire.
 
-2. **Table des sites, domaines et identifiants partenaires** :
+2. **Table des sites et domaines du partenaire** :
    - Fichier source : `outils/pro-web-uploader/variables.md`.
-   - Resolution du triplet `(partnerId, websiteId, domainName)` selon le domaine cible.
-   - Attention : `partnerId=9` correspond uniquement aux sites internes Propulse Lab. Les sites des autres partenaires utilisent leur propre `partnerId` specifie dans la table (Biosante=2, VivaSante=4, Pantheon=12, Optima=21, Tao=23, APS=24, Inse=25, LFP=26).
+   - Resolution du `websiteId` correspondant strictement au domaine cible choisi par l'utilisateur.
 
 3. **Donnees business et design system** :
    - Charte visuelle : `donnees-business/design-system.md` (couleurs primaires, polices, espacements).
@@ -108,10 +108,7 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 3. **Etape 1 sur 3 API : Obtention de l'URL signee S3** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "Content-Type: application/json" \
-     -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "partnerId": '"${PARTNER_ID}"',
        "key": "'"${KEY}"'",
@@ -122,19 +119,14 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 
 4. **Etape 2 sur 3 API : Televersement binaire direct vers S3** :
    ```bash
-   curl -sS -X PUT "${SIGNED_URL}" \
-     -H "Content-Type: text/html" \
-     --data-binary @".tmp/preview-${SLUG}.html"
+   curl -sS -X PUT "${SIGNED_URL}"      -H "Content-Type: text/html"      --data-binary @".tmp/preview-${SLUG}.html"
    ```
    Remarque de securite S3 : ne pas ajouter de header `x-amz-acl`, l'autorisation est signee dans la query string.
 
 5. **Etape 3 sur 3 API : Enregistrement de l'objet en base (`upsert`)** :
    ```bash
    set -a; source .env; set +a
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
-     -H "Content-Type: application/json" \
-     -d '{
+   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert"      -H "x-api-key: ${PRO_WEB_API_KEY}"      -H "Content-Type: application/json"      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
        "partnerId": '"${PARTNER_ID}"',
        "key": "'"${KEY}"'",
@@ -162,8 +154,7 @@ Cette action s'applique pour publier une nouvelle page creee de toutes pieces, p
 Pour retrouver un `objectId`, une cle ou une date de mise a jour :
 ```bash
 set -a; source .env; set +a
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200" \
-  -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=200"   -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
 
 ---
