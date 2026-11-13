@@ -75,19 +75,19 @@ Lorsqu'un éditeur dépose son document source (Google Doc ou fichier `.docx` / 
 ## 5. Étape 3B — Publication Article sur Site Statique (`type: "STATIC"`) via Pro Web API
 
 1. **Contrôle Pré-Vol & Scripts Obligatoires** :
-   - Appeler `GET https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}` avec headers `x-api-key: ${PRO_WEB_API_KEY}` et `x-partner-id: ${PARTNER_ID}`. Si `<slug>/index.html` existe déjà, sauvegarder la page publique actuelle dans `backups/${SLUG}.html`.
+   - Appeler `GET https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}` avec header `x-api-key: ${PRO_WEB_API_KEY}`. Si `articles/${SLUG}` existe déjà, sauvegarder la page publique actuelle dans `backups/${SLUG}.html`.
    - Toute page d'article statique générée doit inclure dans `<head>` :
      ```html
      <script src="https://cdn.info-contenu.io/assets/headerTools.js" type="text/javascript"></script>
      <script src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>
      ```
-2. **Upload des Images (`DOCUMENT`) & de l'Article en Double Arborescence (`PAGE`)** :
+2. **Upload des Images (`DOCUMENT`) & de l'Article (`PAGE`)** :
    - Pour chaque image : `POST https://api-pro-web.propulse-lab.com/objects/signed-url` $\rightarrow$ `PUT <signedUrl>` $\rightarrow$ `POST https://api-pro-web.propulse-lab.com/objects/upsert` avec `type: "DOCUMENT"`, `subtype: "DOCUMENT:IMAGE"` et `key: "assets/images/daily/<slug>/img_<hash>.<ext>"`.
-   - Pour l'article HTML, exécuter la séquence `signed-url` $\rightarrow$ `PUT` $\rightarrow$ `upsert` (`type: "PAGE"`, `subtype: "PAGE:OTHER"`) sur les **2 clés** (chacune contenant un `/`) :
-     1. `key: "<slug>/index.html"`
-     2. `key: "articles/<slug>"`
+   - Pour l'article HTML, exécuter la séquence `signed-url` $\rightarrow$ `PUT` $\rightarrow$ `upsert` (`type: "PAGE"`, `subtype: "PAGE:OTHER"`) sur la clé exacte propre sans slash final :
+     `key: "articles/<slug>"`
+     > **Piège Pro Web STATIC** : Ne jamais utiliser de clé `<slug>/index.html` car Pro Web ne réécrit pas automatiquement les sous-dossiers et renvoie une erreur `500` sur `/<slug>/`.
 3. **Vérification Anonyme & Rollback** :
-   - Vérifier `curl -sS "https://${DOMAIN_NAME}/${SLUG}/"` (`HTTP 200` + `<h1` attendu). En cas d'anomalie, ré-uploader `backups/${SLUG}.html`.
+   - Vérifier `curl -sS "https://${DOMAIN_NAME}/articles/${SLUG}"` (`HTTP 200` + `<h1` attendu) sans slash final. En cas d'anomalie, ré-uploader `backups/${SLUG}.html`.
 
 ---
 
