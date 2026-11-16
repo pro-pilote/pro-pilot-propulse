@@ -11,7 +11,7 @@ Bienvenue dans **Pro-Pilot**, le socle d'instructions permettant de créer, pré
 2. **Synchroniser le socle `.pro-pilot/`** (exécuté automatiquement par votre assistant IA à la lecture de `CLAUDE.md` / `AGENTS.md` / `RULES.md`) :
    ```bash
    if [ -d .pro-pilot/.git ]; then
-     git -C .pro-pilot pull --ff-only
+     git -C .pro-pilot pull --ff-only || { rm -rf .pro-pilot && git clone --depth 1 https://github.com/pro-pilote/pro-pilot-propulse.git .pro-pilot; }
    else
      git clone --depth 1 https://github.com/pro-pilote/pro-pilot-propulse.git .pro-pilot
    fi
