@@ -9,10 +9,9 @@ Cette commande standardise et automatise toutes les operations sur l'infrastruct
 Avant toute operation, lis le contexte du depot local :
 
 1. **Variables d'environnement** :
-   - Chargees automatiquement via `set -a; source .env; set +a`.
-   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`).
-   - `PARTNER_ID` : Identifiant numerique du partenaire.
-   - **Garde-fou Mode Multi-Partenaires** : Si `PRO_WEB_API_KEY` est absente ou vide dans le fichier `.env` (session multi-partenaires d'un collaborateur Propulse Lab), arreter immediatement la commande `/pro-web` en mode local : la publication multi-partenaires passe obligatoirement par le connecteur MCP distant (outil `upload_page`) afin de preserver le confinement 100% cote serveur des cles API de la flotte.
+   - Chargees automatiquement depuis l'environnement ou via `[ -f .env ] && { set -a; source .env; set +a; }`.
+   - `PRO_WEB_API_KEY` : Cle secrete d'acces a l'API publique Pro Web (transmise via le header `x-api-key`). Si `PRO_WEB_API_KEY` est absente ou vide dans l'environnement et dans `.env`, limiter l'execution a la redaction et a la previsualisation locale sans tenter d'appel a l'API Pro Web, et indiquer a l'utilisateur de verifier sa cle API.
+   - `PARTNER_ID` : Identifiant numerique du partenaire (depuis `.env` ou depuis le contexte du partenaire cible).
 
 2. **Table des sites et domaines du partenaire** :
    - Fichier source : `outils/pro-web-uploader/variables.md`.
