@@ -16,17 +16,17 @@ Avant toute génération ou publication :
 1. **Variables d'environnement (`.env`)** :
    - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
    - `PRO_WEB_API_KEY` : clé d'accès à l'API publique Pro Web (header `x-api-key`). Si absente ou vide, se limiter à la rédaction et à l'aperçu local `.tmp/` sans appeler l'API Pro Web.
-   - `PARTNER_ID` : identifiant numérique du partenaire (en mode multi-partenaires `@propulse-lab.com`, le résoudre depuis `skills/pro-web/variables.md` du partenaire cible).
+   - `PARTNER_ID` : identifiant numérique du partenaire. S'il est absent de `.env` (mode multi-partenaires `@propulse-lab.com` ou dépôt mutualisé `others` regroupant Propulse Lab `9`, ScaleUp `22` et les associations `6, 8, 13, 16, 18, 19`), le résoudre obligatoirement depuis la colonne `partnerId` du domaine cible dans `skills/pro-web/variables.md`.
    - `PRO_PILOT_WRITE_TOKEN` : jeton signé permettant de lire en direct le dépôt privé du partenaire (`/api/repo`) et d'enregistrer les retours (`/api/feedback`).
 
 2. **Lecture en direct sur GitHub via `GET https://pro-pilot.propulse-lab.com/api/repo`** :
-   - En mode mono-partenaire :
+   - En mode mono-partenaire (y compris sur le dépôt mutualisé `others`) :
      ```bash
      set -a; source .env; set +a
      curl -fsSL -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
        "https://pro-pilot.propulse-lab.com/api/repo?path=skills/pro-web/variables.md"
      ```
-   - En mode multi-partenaires (`@propulse-lab.com`), ajouter `&partner=<slug>` (ex. `biosante`, `vivasante`, `pantheon`, `optima`, `tao`, `aps`, `inse`, `lfp`, `innovia`, `nutriorigines`).
+   - En mode multi-partenaires (`@propulse-lab.com`), ajouter `&partner=<slug>` (ex. `biosante`, `vivasante`, `pantheon`, `optima`, `tao`, `aps`, `inse`, `lfp`, `innovia`, `nutriorigines`, ou `others` / `propulse` / `scaleup` / `aisnh` / `oipa` / `hippocrate` / `adepsm` / `aidmn` / `xavierbazin`).
    - Fichiers à lire systématiquement avant de produire du HTML :
      - `skills/pro-web/variables.md` : table `(domainName, websiteId)`, `partnerId`, conteneur GTM et URL BDC.
      - `skills/pro-web/specificites.md` et `skills/pro-web/erreurs-connues.md` : règles éditoriales, tracking et pièges mesurés chez ce partenaire.
