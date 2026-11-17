@@ -1,34 +1,25 @@
 # Règles d'Amélioration Continue (Boucle de Feedback Partenaire)
 
-Le cœur de **Pro-Pilot** repose sur l'apprentissage continu : lorsqu'un partenaire corrige l'IA sur un rendu ou un comportement, cette erreur ne doit plus jamais se reproduire chez ce partenaire.
+Le cœur de **Pro-Pilot** repose sur l'apprentissage continu : lorsqu'un partenaire corrige l'IA sur un rendu ou un comportement, cette erreur est capitalisée sur son dépôt GitHub et lue en temps réel par tous les collaborateurs.
 
 ## 1. Quand déclencher une remontée de Feedback ?
 
-Déclenche cette procédure dès que l'utilisateur :
-- Corrige une erreur produite par l'IA sur un outil (ex. mauvais emplacement d'un script, oubli d'une variable GTM, structure mobile cassée).
-- Précise une règle business ou graphique permanente de sa marque qui n'était pas encore écrite dans son dépôt (ex. *« Chez nous, le bandeau auteur doit toujours être fond bleu marine »*).
+Déclenche `/feedback` dès que l'utilisateur :
+- Corrige une erreur produite par l'IA sur une skill (ex. oubli d'un paramètre API, variable GTM erronée, encodage ou structure mobile).
+- Précise une règle business ou graphique permanente de sa marque qui n'était pas encore écrite dans son dépôt.
 
-## 2. Comment classer le retour (Dossier cible dans le Repo Partenaire)
+## 2. Classification de la Cible dans `pro-pilot-<partenaire>`
 
 | Nature de la correction du partenaire | Fichier cible dans `pro-pilot-<partenaire>` |
 |---|---|
-| Erreur technique ou piège commis par l'IA sur un outil | `outils/<nom-outil>/erreurs-connues.md` |
-| Variable technique manquante ou erronée (GTM, domaine, `websiteId`) | `outils/<nom-outil>/variables.md` |
-| Particularité d'un site ou règle métier sur un outil | `outils/<nom-outil>/specificites.md` |
+| Erreur technique ou piège commis par l'IA sur une skill | `skills/<nom-skill>/erreurs-connues.md` |
+| Variable technique manquante ou erronée (GTM, domaine, `websiteId`) | `skills/<nom-skill>/variables.md` |
+| Particularité d'un site ou règle éditoriale sur une skill | `skills/<nom-skill>/specificites.md` |
 | Charte graphique, couleur, typographie ou composant visuel | `donnees-business/design-system.md` |
 | Offre, tarif, promesse, FAQ ou mention légale d'un produit | `donnees-business/<sku>/fiche-produit.md` |
 
-## 3. Remontée sur le dépôt du partenaire (Issue GitHub)
+## 3. Enregistrement Append-Only via `/feedback`
 
 1. Corrige d'abord immédiatement le travail en cours pour satisfaire la demande du partenaire.
-2. Propose ensuite au partenaire d'enregistrer cette règle dans la mémoire de son dépôt en ouvrant une **Issue GitHub** formatée selon `.github/ISSUE_TEMPLATE/feedback.yml` :
-   - **Titre** : `[FEEDBACK][<outil ou produit>] Résumé court de la règle`
-   - **Label** : `statut:à-trier`
-   - **Contenu** :
-     - Contexte / Demande initiale
-     - Ce que l'IA avait généré par erreur
-     - La règle exacte à retenir
-     - Le chemin du fichier cible (ex. `outils/pro-web-uploader/erreurs-connues.md`)
-     - Le bloc Markdown exact prêt à être ajouté dans ce fichier.
-
-> **Traitement par Propulse Lab** : Les retours sont relus et intégrés dans le dépôt du partenaire (ou dans le socle commun `pro-pilot-propulse` lorsqu'ils concernent tous les partenaires).
+2. Exécute la skill [`/feedback`](../skills/feedback/SKILL.md) (`POST https://pro-pilot.propulse-lab.com/api/feedback`) qui écrit une note horodatée dans `donnees-business/_inbox/<ISO>_<auteur>_<sujet>_<uuid8>.md` sans conflit Git.
+3. Les notes d'`_inbox/` sont consolidées dans les fichiers `skills/<nom-skill>/*` ou `donnees-business/*` du partenaire (ou dans le socle public `pro-pilot-propulse/skills/*` si la règle est universelle).
