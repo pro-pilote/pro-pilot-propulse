@@ -49,7 +49,8 @@ req = urllib.request.Request(
     data=json.dumps(payload).encode("utf-8"),
     headers={
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": "Pro-Pilot-CLI/2.0"
     },
     method="POST"
 )
