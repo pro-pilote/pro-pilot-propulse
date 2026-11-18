@@ -8,8 +8,8 @@ Récupère et applique en direct la dernière version officielle de la skill cor
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-web/SKILL.md` (commande `/pro-web`).
 2. **Préparation, prévisualisation 2 étapes ou publication d'une newsletter quotidienne (Daily Email SFMC + Article Blog/Static)** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/daily-publisher/SKILL.md` (commande `/daily-publisher`).
-3. **Correction, retour d'expérience, ajustement de charte ou nouvelle règle métier formulée par l'utilisateur** :
-   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/feedback/SKILL.md` (commande `/feedback`).
+3. **Clôture, correction, retour d'expérience, ajustement de charte ou nouvelle règle métier formulée par l'utilisateur** :
+   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/fin/SKILL.md` (commande `/fin`).
 
 *(Rappel de sécurité : aucune suppression d'objet n'est autorisée par API en v1 — toute suppression définitive s'effectue manuellement dans l'interface web Pro Web).*
 
@@ -35,4 +35,4 @@ Ne jamais s'appuyer sur des copies locales figées :
 
 ## Étape 4 — Boucle d'Amélioration Continue
 
-Dès que l'utilisateur corrige un rendu, un style ou une règle, appliquer `/feedback` pour consigner la note en mode append-only dans `donnees-business/_inbox/` sur le dépôt GitHub du partenaire via `POST https://pro-pilot.propulse-lab.com/api/feedback`.
+Dès que l'utilisateur corrige un rendu, un style ou une règle (ou en clôture d'échange), appliquer `/fin` pour consigner la note en mode append-only dans `donnees-business/_inbox/` sur le dépôt GitHub du partenaire via `POST https://pro-pilot.propulse-lab.com/api/feedback`.
