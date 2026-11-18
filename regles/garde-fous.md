@@ -10,7 +10,7 @@
 ## 2. Protection des Scripts Pro Web (`headerTools.js`, `preserveParamsV2.js`, `GTM`, `leadBox`)
 - Toute page HTML (`PAGE`) générée ou modifiée doit inclure ou conserver intacts les scripts officiels Pro Web (`https://cdn.info-contenu.io/assets/`) :
   - `<script src="https://cdn.info-contenu.io/assets/headerTools.js" type="text/javascript"></script>`,
-  - `<script src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>`,
+  - `<script async="" src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>` (dans `<head>`, juste après `headerTools.js`),
   - Les scripts Google Tag Manager (`GTM-XXXXXXX` dans `<head>` et `<noscript>` dans `<body>`),
   - Les scripts de formulaires d'opt-in (`leadBox-v1.0.0.js`, `email-autocomplete.js`, `eventTriggerV1.js`, `redirect-v1.0.0.js`, `intlTelInput.js`), les balises `<form>` et le pied de page légal.
 

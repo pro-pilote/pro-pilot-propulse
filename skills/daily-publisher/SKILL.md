@@ -14,7 +14,7 @@ Cette skill définit le protocole universel de génération, de prévisualisatio
 
 ## 1. Contexte & Lecture Live du Dépôt Partenaire (`GET /api/repo`)
 
-Lorsqu'un éditeur dépose son document source (Google Doc ou fichier `.docx` / `.html`) et indique la liste cible (ex. `LVP`, `LIVE`, `LIBRES`, `CLUB`) :
+Lorsqu'un éditeur dépose son document source (Google Doc ou fichier `.docx` / `.html`) et indique la liste cible (ex. `LISTE_A`, `LISTE_B`) :
 1. Charger `.env` (`[ -f .env ] && { set -a; source .env; set +a; }`) et lire en direct via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` (`Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}`, avec `&partner=<slug>` si mode multi-partenaires) :
    - `skills/daily-publisher/variables.md`
    - `skills/daily-publisher/specificites.md`
