@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "skills": {
+    "pro-web": {
+      "version": "2.1.0",
+      "status": "stable",
+      "path": "skills/pro-web/SKILL.md",
+      "summary": "Créer, retoucher, prévisualiser et publier des pages HTML et documents Pro Web"
+    },
+    "fin": {
+      "version": "2.1.0",
+      "status": "stable",
+      "path": "skills/fin/SKILL.md",
+      "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
+    },
+    "daily-publisher": {
+      "version": "0.9.0",
+      "status": "wip",
+      "path": "skills/daily-publisher/SKILL.md",
+      "summary": "Préparer et publier une newsletter quotidienne (Email SFMC + Article Blog)"
+    }
+  }
+}
