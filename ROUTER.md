@@ -5,7 +5,7 @@
 Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
 
 1. **Auto-découverte silencieuse de l'environnement (`Project-Aware Context`)** :
-   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
+   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`. Si `.env` est absent dans le dossier courant, vérifier s'il existe dans un sous-dossier `pro-pilot-*/.env` (l'utilisateur a probablement ouvert le dossier parent) et le guider sobrement pour ouvrir ce sous-dossier dans son IA. Si aucun `.env` valide n'est présent ou si `PRO_WEB_API_KEY` est vide, **ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : l'inviter à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour générer un nouveau prompt d'initialisation (le lien de configuration est à usage unique).
    - Contrôler `skills/manifest.json` pour vérifier si de nouveaux skills stables sont disponibles (via le snippet d'Étape 0 de `skills/pro-web/SKILL.md`).
    - Si `PARTNER_SLUG` est absent (mode multi-partenaires) : demander poliment à l'utilisateur sur quelle organisation travailler aujourd'hui (ex. Éditions Biosanté, Éditions VivaSanté, Optima Santé, Panthéon Recherche...).
    - Si `PARTNER_SLUG` est défini (ou dès que l'organisation est choisie) :

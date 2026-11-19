@@ -1,6 +1,6 @@
 ---
 name: pro-web
-version: "2.1.1"
+version: "2.1.2"
 description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle et lecture live du depot partenaire sur GitHub.
 ---
 
@@ -20,7 +20,7 @@ import json, os, urllib.request
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 SKILL_NAME = "pro-web"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.1.1"
+CURRENT_VERSION = "2.1.2"
 
 try:
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.1"})
@@ -61,8 +61,8 @@ PY
 Avant toute génération ou publication :
 
 1. **Variables d'environnement (`.env`)** :
-   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
-   - `PRO_WEB_API_KEY` : clé d'accès à l'API publique Pro Web (header `x-api-key`). Si absente ou vide, se limiter à la rédaction et à l'aperçu local `.tmp/` sans appeler l'API Pro Web.
+   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`. Si `.env` est absent du dossier courant, vérifier la présence d'un sous-dossier `pro-pilot-*/.env` (dossier parent ouvert par erreur) et indiquer à l'utilisateur d'ouvrir ce dossier dans son IA.
+   - `PRO_WEB_API_KEY` : clé d'accès à l'API publique Pro Web (header `x-api-key`), fournie automatiquement par le portail `https://pro-pilot.propulse-lab.com/`. **Ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : si `.env` est absent ou `PRO_WEB_API_KEY` vide (mauvais dossier ouvert, lien de configuration déjà utilisé une fois ou environnement sans accès réseau), inviter simplement l'utilisateur à ouvrir son dossier `pro-pilot-<organisation>/` ou à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour copier un prompt neuf — et se limiter à la rédaction et à l'aperçu local `.tmp/` en attendant.
    - `PARTNER_ID` : identifiant numérique du partenaire. S'il est absent de `.env` (mode multi-partenaires ou dépôt mutualisé multi-organisations), le résoudre obligatoirement depuis la colonne `partnerId` du domaine cible dans `skills/pro-web/variables.md`.
    - `PARTNER_NAME` : nom officiel de l'organisation (ex. `Éditions Biosanté`). Toujours utiliser ce nom réel dans les échanges avec l'utilisateur au lieu du terme générique « organisation » (ne jamais employer le mot « marque »).
    - `PRO_PILOT_WRITE_TOKEN` : jeton signé permettant de lire en direct le dépôt privé du partenaire (`/api/repo`) et d'enregistrer les retours (`/api/feedback`).
