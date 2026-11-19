@@ -1,12 +1,12 @@
 ---
-name: daily-publisher
+name: pro-daily
 description: Preparation, Studio visuel 2 etapes scelle SHA-256 et publication coordonnee d'un Daily dans Salesforce Marketing Cloud et sur Blog WordPress ou Site Statique Pro Web.
 ---
 
-# Skill `/daily-publisher` — Email Marketing Cloud & Article Blog / Statique
+# Skill `/pro-daily` — Email Marketing Cloud & Article Blog / Statique
 
-> **Statut : En cours de développement (Work in Progress)**
-> Cette skill est en cours de développement actif. La publication automatisée de bout en bout sera déployée prochainement.
+> **Statut : Non exposé aux partenaires — En cours de développement actif (Interne)**
+> Cette skill est en cours d'intégration (Salesforce Marketing Cloud + Blog / Statique). Elle n'est pas encore activée sur les espaces partenaires.
 
 Cette skill définit le protocole universel de génération, de prévisualisation locale en **2 étapes non-techniques** (**① Daily Email** $\rightarrow$ **② Article sur le blog**) et de publication multi-canal via l'**API REST Salesforce Marketing Cloud**, l'**API REST WordPress** (`type: "BLOG"`) ou l'**API Pro Web** (`type: "STATIC"`).
 
@@ -16,9 +16,9 @@ Cette skill définit le protocole universel de génération, de prévisualisatio
 
 Lorsqu'un éditeur dépose son document source (Google Doc ou fichier `.docx` / `.html`) et indique la liste cible (ex. `LISTE_A`, `LISTE_B`) :
 1. Charger `.env` (`[ -f .env ] && { set -a; source .env; set +a; }`) et lire en direct via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` (`Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}`, avec `&partner=<slug>` si mode multi-partenaires) :
-   - `skills/daily-publisher/variables.md`
-   - `skills/daily-publisher/specificites.md`
-   - `skills/daily-publisher/erreurs-connues.md`
+   - `skills/pro-daily/variables.md`
+   - `skills/pro-daily/specificites.md`
+   - `skills/pro-daily/erreurs-connues.md`
 2. Vérifier que `sfmc_folder_status` de la liste ne commence pas par `"TEMPORIZED"` (`sfmc_folder_status.startsWith("TEMPORIZED")`). Toute liste temporisée est bloquée en fail-closed sauf déverrouillage explicite demandé par l'utilisateur (`--force-temporized`).
 3. Générer dans `.tmp/daily-<slug>/` le Studio visuel local en 2 étapes (`preview-dual.html`), les fichiers éditables (`editable-email.html`, `editable-article.html`, `editable-meta.json`) et le manifeste scellé (`manifest.json`), sans jargon technique dans l'interface.
 

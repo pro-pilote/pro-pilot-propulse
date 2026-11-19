@@ -19,11 +19,11 @@
       "path": "skills/pro-blocks/SKILL.md",
       "summary": "Consulter, valider et modifier la structure et les blocs des espaces membres"
     },
-    "daily-publisher": {
+    "pro-daily": {
       "version": "0.9.0",
-      "status": "wip",
-      "path": "skills/daily-publisher/SKILL.md",
-      "summary": "Préparer et publier une newsletter quotidienne (Email SFMC + Article Blog)"
+      "status": "hidden",
+      "path": "skills/pro-daily/SKILL.md",
+      "summary": "Préparer et publier une newsletter quotidienne (Email SFMC + Article Blog) — En cours de dev"
     }
   }
 }

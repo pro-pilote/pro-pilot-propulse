@@ -68,9 +68,7 @@ Récupère et applique en direct la dernière version officielle de la skill cor
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-web/SKILL.md` (commande `/pro-web`).
 2. **Modification de la structure et des blocs d'un espace membre (onglets, blocs, branding, options)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes abonnés actives : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-blocks/SKILL.md` (commande `/pro-blocks`).
-3. **Préparation, prévisualisation 2 étapes ou publication d'une newsletter quotidienne (Daily Email SFMC + Article Blog/Static)** :
-   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/daily-publisher/SKILL.md` (commande `/daily-publisher`).
-4. **Clôture, correction, retour d'expérience, ajustement de charte ou nouvelle règle métier formulée par l'utilisateur** :
+3. **Clôture, correction, retour d'expérience, ajustement de charte ou nouvelle règle métier formulée par l'utilisateur** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/fin/SKILL.md` (commande `/fin`).
 
 *(Rappel de sécurité : aucune suppression d'objet n'est autorisée par API en v1 — toute suppression définitive s'effectue manuellement dans l'interface web Pro Web).*

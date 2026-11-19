@@ -16,7 +16,7 @@
 
 ## 3. Sécurité des Secrets & Anti-TOCTOU Daily
 - Ne jamais committer ni afficher en clair le fichier `.env` ou les clés `PRO_WEB_API_KEY`, `PRO_PILOT_WRITE_TOKEN`, `SFMC_CLIENT_SECRET` et `WP_APP_PASSWORD_*`.
-- Pour toute publication via `daily-publisher`, vérifier en fail-closed le scellement `SHA-256` (`manifest.previewHash` + égalité stricte de `editable-email.html` et `editable-article.html`), bloquer toute liste dont `sfmc_folder_status` commence par `"TEMPORIZED"`, sauvegarder l'existant dans `.tmp/backups/` avant mise à jour et vérifier en `GET` le contenu réellement écrit sur Marketing Cloud et sur le site public.
+- Pour toute publication via `pro-daily`, vérifier en fail-closed le scellement `SHA-256` (`manifest.previewHash` + égalité stricte de `editable-email.html` et `editable-article.html`), bloquer toute liste dont `sfmc_folder_status` commence par `"TEMPORIZED"`, sauvegarder l'existant dans `.tmp/backups/` avant mise à jour et vérifier en `GET` le contenu réellement écrit sur Marketing Cloud et sur le site public.
 
 ## 4. Périmètres Lecture / Écriture du Dépôt Partenaire via le Portail
 - Lecture en temps réel (`GET /api/repo`) : restreinte strictement à `donnees-business/**` et `skills/**` du dépôt associé au jeton `PRO_PILOT_WRITE_TOKEN`.
