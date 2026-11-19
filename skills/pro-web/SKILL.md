@@ -198,8 +198,8 @@ Utiliser la convention de clé `<page_key>_assets/img/<fichier>` (ex. `pages/<sl
 
 ---
 
-## 6. Garde-fous & Rétro-Alimentation (`/fin`)
+## 6. Garde-fous & Rétro-Alimentation (`/learn`)
 
 1. **Suppression non autorisée en v1** : aucune route `DELETE` n'est ouverte sur l'API publique ; toute suppression définitive s'effectue manuellement sur l'interface web Pro Web.
 2. **Sécurité des secrets** : ne jamais afficher `PRO_WEB_API_KEY` ni `PRO_PILOT_WRITE_TOKEN` en clair.
-3. **Apprentissage continu** : dès que l'utilisateur formule une correction, une préférence graphique ou une nouvelle règle (ou en clôture via `/fin`), l'appliquer immédiatement puis proposer de l'enregistrer via la skill `/fin` (`POST https://pro-pilot.propulse-lab.com/api/feedback` $\rightarrow$ `donnees-business/_inbox/`).
+3. **Apprentissage continu** : dès que l'utilisateur formule une correction, une préférence graphique ou une nouvelle règle (ou en clôture via `/learn`), l'appliquer immédiatement puis proposer de l'enregistrer via la skill `/learn` (alias `/fin`) (`POST https://pro-pilot.propulse-lab.com/api/feedback` $\rightarrow$ `donnees-business/_inbox/`).

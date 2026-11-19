@@ -126,4 +126,4 @@ curl --fail-with-body -sS -m 30 -X PUT \
 - Confirmer la nouvelle version enregistrée et le lien public du site.
 - Note réseau : en cas de timeout lors du `PUT`, ne jamais relancer l'écriture à l'aveugle : exécuter d'abord un `GET` pour vérifier si la version a déjà été incrémentée.
 - Note cache : la publication déclenche la purge côté administration ; le cache public peut mettre quelques instants à se rafraîchir (sauf purge manuelle).
-- Si l'utilisateur signale un écart ou formule une règle éditoriale permanente, proposer `/fin` pour la mémoriser.
+- Si l'utilisateur signale un écart, une consigne de branding (logo, couleur) ou formule une règle permanente, proposer `/learn` (alias `/fin`) pour la mémoriser dans `donnees-business/design-system.md` ou `erreurs-connues.md`.

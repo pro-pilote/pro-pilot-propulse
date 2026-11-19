@@ -7,11 +7,17 @@
       "path": "skills/pro-web/SKILL.md",
       "summary": "Créer, retoucher, prévisualiser et publier des pages HTML et documents Pro Web"
     },
-    "fin": {
-      "version": "2.1.0",
+    "learn": {
+      "version": "2.2.0",
       "status": "stable",
-      "path": "skills/fin/SKILL.md",
-      "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
+      "path": "skills/learn/SKILL.md",
+      "summary": "Apprentissage continu de règles métier et bilan rétrospectif de session dans l'inbox GitHub"
+    },
+    "fin": {
+      "version": "2.2.0",
+      "status": "stable",
+      "path": "skills/learn/SKILL.md",
+      "summary": "Alias rétrocompatible de /learn pour la clôture et l'enregistrement de règles"
     },
     "pro-blocks": {
       "version": "1.0.3",

@@ -3,6 +3,6 @@
 Ce répertoire définit les règles transverses appliquées par tous les agents et partenaires :
 
 1. **[`glossaire.md`](./glossaire.md)** : Vocabulaire et terminologie SSOT Propulse Lab (Objet `PAGE`/`DOCUMENT`, LP, types de sites, BU, Design System).
-2. **[`amelioration-continue-letta.md`](./amelioration-continue-letta.md)** : Boucle d'apprentissage partenaire append-only via `/fin` (`donnees-business/_inbox/`).
+2. **[`amelioration-continue-letta.md`](./amelioration-continue-letta.md)** : Boucle d'apprentissage partenaire append-only via `/learn` (alias `/fin`) (`donnees-business/_inbox/`).
 3. **[`clarification.md`](./clarification.md)** : Règle de clarification préalable (1 à 3 questions) et STOP-Condition sur les champs `[À COMPLÉTER]`.
 4. **[`garde-fous.md`](./garde-fous.md)** : Validation humaine obligatoire avant écriture (`signed-url`/`PUT`, `upsert`), préservation de `headerTools.js`/GTM/formulaires et protection de `.env`.
