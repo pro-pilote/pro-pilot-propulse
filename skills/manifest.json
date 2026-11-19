@@ -13,10 +13,10 @@
       "path": "skills/fin/SKILL.md",
       "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
     },
-    "sites-fulfi": {
-      "version": "1.0.1",
+    "pro-fulfi": {
+      "version": "1.0.2",
       "status": "partner_scoped",
-      "path": "skills/sites-fulfi/SKILL.md",
+      "path": "skills/pro-fulfi/SKILL.md",
       "summary": "Consulter, valider et modifier la configuration des sites Fulfi (espaces membres)"
     },
     "daily-publisher": {
