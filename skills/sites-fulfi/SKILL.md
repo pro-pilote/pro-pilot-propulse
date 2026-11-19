@@ -5,6 +5,8 @@ description: Lecture, validation et mise à jour sécurisée de la configuration
 
 # Skill `/sites-fulfi` — Pilotage des Sites Fulfi
 
+> **Périmètre strict (Règle d'or)** : Cette skill s'adresse exclusivement aux partenaires du pôle **Finance** disposant de plateformes Fulfi actives (`Panthéon Recherche` [12], `Institut de l'Épargne` [25], `Léman Finance Partners` [26]). Les autres partenaires (Santé, Développement personnel, Spiritualité, Survivalisme) ne disposent pas de plateformes Fulfi et ne sont pas éligibles à cette commande.
+
 Cette skill permet de consulter et modifier la configuration d'un site Fulfi (espace membre : navigation, blocs, branding, libellés, options) directement depuis Pro-Pilot via le portail sécurisé (`https://pro-pilot.propulse-lab.com/api/ai-child/*`), sans mot de passe WordPress local ni configuration IP.
 
 ---
@@ -19,7 +21,7 @@ import json, os, urllib.request
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 SKILL_NAME = "sites-fulfi"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "1.0.1"
 
 try:
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.1"})
