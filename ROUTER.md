@@ -66,8 +66,8 @@ Récupère et applique en direct la dernière version officielle de la skill cor
 
 1. **Création, retouche, inventaire ou publication d'une page HTML / d'un document PDF ou image sur Pro Web** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-web/SKILL.md` (commande `/pro-web`).
-2. **Modification de la configuration d'un site Fulfi (espace membre : onglets, blocs, branding, options)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes Fulfi : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
-   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-fulfi/SKILL.md` (commande `/pro-fulfi`).
+2. **Modification de la structure et des blocs d'un espace membre (onglets, blocs, branding, options)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes abonnés actives : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
+   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-blocks/SKILL.md` (commande `/pro-blocks`).
 3. **Préparation, prévisualisation 2 étapes ou publication d'une newsletter quotidienne (Daily Email SFMC + Article Blog/Static)** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/daily-publisher/SKILL.md` (commande `/daily-publisher`).
 4. **Clôture, correction, retour d'expérience, ajustement de charte ou nouvelle règle métier formulée par l'utilisateur** :

@@ -1,27 +1,27 @@
 ---
-name: pro-fulfi
-description: Lecture, validation et mise à jour sécurisée de la configuration des sites Fulfi (espaces membres) via le portail Pro-Pilot, sans mot de passe WordPress local ni dépendance IP.
+name: pro-blocks
+description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés via le portail Pro-Pilot, sans mot de passe WordPress local ni dépendance IP.
 ---
 
-# Skill `/pro-fulfi` — Pilotage des Sites Fulfi
+# Skill `/pro-blocks` — Pilotage des Blocs et Espaces Membres
 
-> **Périmètre strict (Règle d'or)** : Cette skill s'adresse exclusivement aux partenaires du pôle **Finance** disposant de plateformes Fulfi actives (`Panthéon Recherche` [12], `Institut de l'Épargne` [25], `Léman Finance Partners` [26]). Les autres partenaires (Santé, Développement personnel, Spiritualité, Survivalisme) ne disposent pas de plateformes Fulfi et ne sont pas éligibles à cette commande.
+> **Périmètre strict (Règle d'or)** : Cette skill s'adresse exclusivement aux partenaires du pôle **Finance** disposant de plateformes abonnés actives (`Panthéon Recherche` [12], `Institut de l'Épargne` [25], `Léman Finance Partners` [26]). Les autres partenaires (Santé, Développement personnel, Spiritualité, Survivalisme) ne disposent pas de plateformes abonnés et ne sont pas éligibles à cette commande.
 
-Cette skill permet de consulter et modifier la configuration d'un site Fulfi (espace membre : navigation, blocs, branding, libellés, options) directement depuis Pro-Pilot via le portail sécurisé (`https://pro-pilot.propulse-lab.com/api/ai-child/*`), sans mot de passe WordPress local ni configuration IP.
+Cette skill permet de consulter et modifier la structure et les blocs d'un espace membre (navigation, blocs d'accueil, branding, libellés, options) directement depuis Pro-Pilot via le portail sécurisé (`https://pro-pilot.propulse-lab.com/api/ai-child/*`), sans mot de passe WordPress local ni configuration IP.
 
 ---
 
 ## 0. Contrôle de Version Ultra-Rapide (< 100 ms)
 
-À chaque appel de `/pro-fulfi`, exécute ce snippet Python borné à 2 secondes :
+À chaque appel de `/pro-blocks`, exécute ce snippet Python borné à 2 secondes :
 ```bash
 python3 - <<'PY'
 import json, os, urllib.request
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
-SKILL_NAME = "pro-fulfi"
+SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.0.2"
+CURRENT_VERSION = "1.0.3"
 
 try:
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.1"})
@@ -92,7 +92,7 @@ curl -fsS -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   "https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}" \
   -o ".tmp/platform-${SITE_SLUG}.json"
 ```
-Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.version` dans `.tmp/backup-pro-fulfi-${SITE_SLUG}-v${VERSION}.json` avant toute édition.
+Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.version` dans `.tmp/backup-pro-blocks-${SITE_SLUG}-v${VERSION}.json` avant toute édition.
 
 ### Étape 2 — Patch Minimal sur `.overrides` & Validation Serveur (`POST /validate`)
 Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis valider sans écrire en prod :
