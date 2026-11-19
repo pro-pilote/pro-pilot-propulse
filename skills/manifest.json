@@ -13,11 +13,11 @@
       "path": "skills/fin/SKILL.md",
       "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
     },
-    "ai-child": {
+    "sites-fulfi": {
       "version": "1.0.0",
       "status": "partner_scoped",
-      "path": "skills/ai-child/SKILL.md",
-      "summary": "Consulter, valider et modifier la configuration des sites vibecodés (thème ai-child)"
+      "path": "skills/sites-fulfi/SKILL.md",
+      "summary": "Consulter, valider et modifier la configuration des sites Fulfi (espaces membres)"
     },
     "daily-publisher": {
       "version": "0.9.0",

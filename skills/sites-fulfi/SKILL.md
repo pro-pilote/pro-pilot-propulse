@@ -1,23 +1,23 @@
 ---
-name: ai-child
-description: Lecture, validation et mise à jour sécurisée de la configuration des sites vibecodés (thème ai-child) via le portail Pro-Pilot, sans mot de passe WordPress local ni dépendance IP.
+name: sites-fulfi
+description: Lecture, validation et mise à jour sécurisée de la configuration des sites Fulfi (espaces membres) via le portail Pro-Pilot, sans mot de passe WordPress local ni dépendance IP.
 ---
 
-# Skill `/ai-child` — Pilotage des Sites Vibecodés
+# Skill `/sites-fulfi` — Pilotage des Sites Fulfi
 
-Cette skill permet de consulter et modifier la configuration d'un site vibecodé (`ai-child` : navigation, blocs, branding, libellés, options) directement depuis Pro-Pilot via le portail sécurisé (`https://pro-pilot.propulse-lab.com/api/ai-child/*`), sans mot de passe WordPress local ni configuration IP.
+Cette skill permet de consulter et modifier la configuration d'un site Fulfi (espace membre : navigation, blocs, branding, libellés, options) directement depuis Pro-Pilot via le portail sécurisé (`https://pro-pilot.propulse-lab.com/api/ai-child/*`), sans mot de passe WordPress local ni configuration IP.
 
 ---
 
 ## 0. Contrôle de Version Ultra-Rapide (< 100 ms)
 
-À chaque appel de `/ai-child`, exécute ce snippet Python borné à 2 secondes :
+À chaque appel de `/sites-fulfi`, exécute ce snippet Python borné à 2 secondes :
 ```bash
 python3 - <<'PY'
 import json, os, urllib.request
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
-SKILL_NAME = "ai-child"
+SKILL_NAME = "sites-fulfi"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
 CURRENT_VERSION = "1.0.0"
 
@@ -49,14 +49,14 @@ PY
 Avant toute opération :
 1. Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
 2. Vérifier la présence de `PRO_PILOT_WRITE_TOKEN` (aucun mot de passe WordPress n'est requis dans `.env`).
-3. Lister les sites vibecodés accessibles pour cette organisation :
+3. Lister les sites Fulfi accessibles pour cette organisation :
    ```bash
    set -a; source .env; set +a
    curl -fsS -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
      "https://pro-pilot.propulse-lab.com/api/ai-child/sites"
    ```
    *(En mode multi-partenaires, ajouter `?partner=<slug>` si nécessaire.)*
-4. Si la liste est vide, indiquer sobrement qu'aucun site vibecodé n'est rattaché à cette organisation. Si plusieurs sites sont retournés et que l'utilisateur n'a pas précisé lequel, lui demander de choisir.
+4. Si la liste est vide, indiquer sobrement qu'aucun site Fulfi n'est rattaché à cette organisation. Si plusieurs sites sont retournés et que l'utilisateur n'a pas précisé lequel, lui demander de choisir.
 
 ---
 
@@ -90,7 +90,7 @@ curl -fsS -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   "https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}" \
   -o ".tmp/platform-${SITE_SLUG}.json"
 ```
-Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.version` dans `.tmp/backup-ai-child-${SITE_SLUG}-v${VERSION}.json` avant toute édition.
+Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.version` dans `.tmp/backup-sites-fulfi-${SITE_SLUG}-v${VERSION}.json` avant toute édition.
 
 ### Étape 2 — Patch Minimal sur `.overrides` & Validation Serveur (`POST /validate`)
 Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis valider sans écrire en prod :
