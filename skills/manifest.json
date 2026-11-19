@@ -13,6 +13,12 @@
       "path": "skills/fin/SKILL.md",
       "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
     },
+    "ai-child": {
+      "version": "1.0.0",
+      "status": "partner_scoped",
+      "path": "skills/ai-child/SKILL.md",
+      "summary": "Consulter, valider et modifier la configuration des sites vibecodés (thème ai-child)"
+    },
     "daily-publisher": {
       "version": "0.9.0",
       "status": "wip",
