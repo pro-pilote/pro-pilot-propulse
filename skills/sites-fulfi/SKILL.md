@@ -96,13 +96,13 @@ Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.ver
 Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis valider sans écrire en prod :
 ```bash
 set -a; source .env; set +a
-curl -fsS -m 20 -X POST \
+curl --fail-with-body -sS -m 30 -X POST \
   -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   -H "Content-Type: application/json" \
   --data-binary "@.tmp/payload-${SITE_SLUG}.json" \
   "https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}/validate"
 ```
-- Si `ok` est `false` (ou HTTP `400`), corriger les `errors` / `violations` et revalider avant toute suite.
+- Si `ok` est `false` (ou HTTP `400`), le corps JSON contient les détails `errors` / `violations` à corriger avant de revalider.
 - Remonter les éventuels `warnings` à l'utilisateur.
 
 ### Étape 3 — Confirmation Humaine Explicite (STOP Obligatoire)
@@ -115,12 +115,13 @@ Attendre un accord explicite (**« Oui » / « Go » / « Publie »**) avant d'a
 ### Étape 4 — Publication (`PUT /api/ai-child/platform/<slug>`)
 ```bash
 set -a; source .env; set +a
-curl -fsS -m 20 -X PUT \
+curl --fail-with-body -sS -m 30 -X PUT \
   -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   -H "Content-Type: application/json" \
   --data-binary "@.tmp/payload-${SITE_SLUG}.json" \
   "https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}"
 ```
 - Confirmer la nouvelle version enregistrée et le lien public du site.
+- Note réseau : en cas de timeout lors du `PUT`, ne jamais relancer l'écriture à l'aveugle : exécuter d'abord un `GET` pour vérifier si la version a déjà été incrémentée.
 - Note cache : la publication déclenche la purge côté administration ; le cache public peut mettre quelques instants à se rafraîchir (sauf purge manuelle).
 - Si l'utilisateur signale un écart ou formule une règle éditoriale permanente, proposer `/fin` pour la mémoriser.

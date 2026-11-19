@@ -14,7 +14,7 @@
       "summary": "Clôturer une session et enregistrer retours, corrections et règles dans l'inbox GitHub"
     },
     "sites-fulfi": {
-      "version": "1.0.0",
+      "version": "1.0.1",
       "status": "partner_scoped",
       "path": "skills/sites-fulfi/SKILL.md",
       "summary": "Consulter, valider et modifier la configuration des sites Fulfi (espaces membres)"
