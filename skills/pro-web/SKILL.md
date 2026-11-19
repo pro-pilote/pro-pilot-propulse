@@ -41,9 +41,21 @@ try:
             os.replace(tmp_path, LOCAL_PATH)
             print(f"[PRO_PILOT_UPDATE] Skill /{SKILL_NAME} mis à jour automatiquement vers v{remote_ver}.")
 
-    # 2. Détection de nouveaux skills stables disponibles
+    # 2. Détection de nouveaux skills disponibles (stables ou scoped éligibles au partenaire)
+    local_pid = None
+    if os.path.exists(".env"):
+        try:
+            with open(".env") as f:
+                for line in f:
+                    if line.startswith("PARTNER_ID="):
+                        val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        local_pid = int(val) if val.isdigit() else None
+        except Exception:
+            pass
+
     for name, data in manifest.get("skills", {}).items():
-        if data.get("status") == "stable":
+        is_scoped_ok = (data.get("status") == "partner_scoped" and local_pid in data.get("eligible_partner_ids", []))
+        if data.get("status") == "stable" or is_scoped_ok:
             target_cmd = f".claude/commands/{name}.md"
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')}")
@@ -52,7 +64,7 @@ except Exception:
 PY
 ```
 - Si une mise à jour est signalée, elle est appliquée immédiatement de façon atomique.
-- Si un nouveau skill stable est détecté, signale-le sobrement à l'utilisateur et propose-lui de le télécharger.
+- Si un nouveau skill disponible est détecté, signale-le sobrement à l'utilisateur et propose-lui de le télécharger.
 
 ---
 

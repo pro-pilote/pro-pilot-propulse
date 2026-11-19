@@ -20,8 +20,9 @@
       "summary": "Alias rétrocompatible de /learn pour la clôture et l'enregistrement de règles"
     },
     "pro-blocks": {
-      "version": "1.0.3",
+      "version": "1.0.4",
       "status": "partner_scoped",
+      "eligible_partner_ids": [12, 25, 26],
       "path": "skills/pro-blocks/SKILL.md",
       "summary": "Consulter, valider et modifier la structure et les blocs des espaces membres"
     },
