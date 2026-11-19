@@ -6,7 +6,7 @@ Le cœur de **Pro-Pilot** repose sur l'apprentissage continu : lorsqu'un partena
 
 Déclenche `/fin` en clôture d'échange ou dès que l'utilisateur :
 - Corrige une erreur produite par l'IA sur une skill (ex. oubli d'un paramètre API, variable GTM erronée, encodage ou structure mobile).
-- Précise une règle business ou graphique permanente de sa marque qui n'était pas encore écrite dans son dépôt.
+- Précise une règle business ou graphique permanente de son organisation qui n'était pas encore écrite dans son dépôt.
 
 ## 2. Classification de la Cible dans `pro-pilot-<partenaire>`
 

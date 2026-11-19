@@ -7,8 +7,9 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
 1. **Auto-découverte silencieuse de l'environnement (`Project-Aware Context`)** :
    - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
    - Contrôler `skills/manifest.json` pour vérifier si de nouveaux skills stables sont disponibles (via le snippet d'Étape 0 de `skills/pro-web/SKILL.md`).
-   - Si `PARTNER_SLUG` est absent (mode multi-partenaires) : demander poliment à l'utilisateur sur quel partenaire/marque travailler aujourd'hui (ex. Biosanté, Vivasanté, Optima, Panthéon...).
-   - Si `PARTNER_SLUG` est défini (ou dès que le partenaire est choisi) :
+   - Si `PARTNER_SLUG` est absent (mode multi-partenaires) : demander poliment à l'utilisateur sur quelle organisation travailler aujourd'hui (ex. Éditions Biosanté, Éditions VivaSanté, Optima Santé, Panthéon Recherche...).
+   - Si `PARTNER_SLUG` est défini (ou dès que l'organisation est choisie) :
+     - Résoudre le **nom officiel de l'organisation** depuis `$PARTNER_NAME` (dans `.env`) ou depuis les fichiers du dépôt, et l'utiliser directement partout dans vos messages (ne jamais écrire « votre marque » ni le mot générique « votre organisation » dès lors que le nom réel est connu, ex. **Éditions Biosanté**).
      - Lire en lecture seule via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` (avec `Authorization: Bearer $PRO_PILOT_WRITE_TOKEN`) :
        1. `donnees-business/design-system.md` (charte, couleurs, polices)
        2. `skills/pro-web/variables.md` (domaines et identifiants de sites actifs)
@@ -16,8 +17,8 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
    - *Règle absolue Zéro Jargon* : ne jamais afficher de tokens, lignes brutes de `.env`, chemins techniques `.claude/` ou commandes shell dans la réponse utilisateur.
 
 2. **Restitution "Aha! Moment" & Proposition Guidée de la Toute Première Page** :
-   - Saluer chaleureusement et résumer en 2-3 puces claires ce qui est déjà prêt :
-     *« Bonjour ! Votre espace Pro-Pilot pour **<Marque>** est prêt. Je suis déjà branché sur votre charte graphique, vos **N sites** (dont `<site1>`, `<site2>`) et vos **M fiches produits** (dont `<produit1>`, `<produit2>`). »*
+   - Saluer chaleureusement en nommant directement l'organisation (ex. **Éditions Biosanté**) et résumer en 2-3 puces claires ce qui est déjà prêt :
+     *« Bonjour ! Votre espace Pro-Pilot pour **<Nom de l'organisation>** est prêt. Je suis déjà branché sur la charte graphique, les **N sites** (dont `<site1>`, `<site2>`) et les **M fiches produits** (dont `<produit1>`, `<produit2>`) de **<Nom de l'organisation>**. »*
    - Proposer immédiatement de **créer ensemble la toute première page** avec un aperçu local immédiat dans le navigateur (génération en ~2-3 min, zéro mise en ligne sans confirmation explicite) :
      *« Pour démarrer, souhaitez-vous que l'on crée votre toute première page ? Par exemple :*
      *1. Une page d'inscription / newsletter sur `<site_principal>`*
@@ -26,7 +27,7 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
 
 3. **Proposition Optionnelle de l'Invitation GitHub (Zéro Auto-Invite)** :
    - En fin de message d'accueil, ajouter un court point distinct :
-     *« **Accès GitHub optionnel** : votre espace fonctionne de manière 100% autonome sans compte GitHub. Souhaitez-vous tout de même recevoir une invitation sur le dépôt GitHub privé (`<repo>`) pour suivre l'historique de votre marque ou collaborer ?*
+     *« **Accès GitHub optionnel** : votre espace fonctionne de manière 100% autonome sans compte GitHub. Souhaitez-vous tout de même recevoir une invitation sur le dépôt GitHub privé (`<repo>`) pour suivre l'historique de **<Nom de l'organisation>** ou collaborer ?*
      *— Répondez simplement **Oui** (en précisant votre pseudo `@github` si vous en avez un, sinon sur votre e-mail) ou **Non merci, continuons sur la page** ! »*
    - **Si l'utilisateur accepte** :
      Exécuter `POST https://pro-pilot.propulse-lab.com/api/onboarding/github-invite` avec `$PRO_PILOT_WRITE_TOKEN` :
@@ -49,7 +50,7 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
      try:
          with urllib.request.urlopen(req, timeout=15) as resp:
              res = json.loads(resp.read().decode("utf-8"))
-             print(f"Succès invitation GitHub : {res.get('status')} ({res.get('repo')})")
+             print(res.get("message") or f"Invitation GitHub envoyée ({res.get('repo')})")
      except urllib.error.HTTPError as err:
          print(f"Erreur HTTP {err.code}: {err.read().decode('utf-8')}")
      PY

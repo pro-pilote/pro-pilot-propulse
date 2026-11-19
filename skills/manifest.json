@@ -2,7 +2,7 @@
   "schema": 1,
   "skills": {
     "pro-web": {
-      "version": "2.1.0",
+      "version": "2.1.1",
       "status": "stable",
       "path": "skills/pro-web/SKILL.md",
       "summary": "Créer, retoucher, prévisualiser et publier des pages HTML et documents Pro Web"
