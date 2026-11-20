@@ -5,12 +5,15 @@
 Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
 
 1. **Auto-découverte silencieuse de l'environnement (`Project-Aware Context`)** :
-   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`. Si `.env` est absent dans le dossier courant, vérifier s'il existe dans un sous-dossier `pro-pilot-*/.env` (l'utilisateur a probablement ouvert le dossier parent) et le guider sobrement pour ouvrir ce sous-dossier dans son IA. Si aucun `.env` valide n'est présent ou si `PRO_WEB_API_KEY` est vide, **ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : l'inviter à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour générer un nouveau prompt d'initialisation (le lien de configuration est à usage unique).
+   - Charger la configuration locale : vérifier la présence du fichier `.env` dans le dossier courant. Si `.env` est absent, vérifier s'il existe dans un sous-dossier `pro-pilot-*/.env` (l'utilisateur a probablement ouvert le dossier parent) et le guider sobrement pour ouvrir ce sous-dossier dans son IA. Si aucun `.env` valide n'est présent ou si `PRO_WEB_API_KEY` est vide, **ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : l'inviter à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour générer un nouveau prompt d'initialisation (le lien de configuration est à usage unique).
    - Contrôler `skills/manifest.json` pour vérifier si de nouveaux skills stables sont disponibles (via le snippet d'Étape 0 de `skills/pro-web/SKILL.md`).
-   - Si `PARTNER_SLUG` est absent (mode multi-partenaires) : demander poliment à l'utilisateur sur quelle organisation travailler aujourd'hui (ex. Éditions Biosanté, Éditions VivaSanté, Optima Santé, Panthéon Recherche...).
-   - Si `PARTNER_SLUG` est défini (ou dès que l'organisation est choisie) :
+   - **Mode Multi-Partenaires (`PARTNER_SLUG` absent ou `pid: "multi"`) — Séquençage strict en deux tours** :
+     - **Tour 1** : Demander poliment à l'utilisateur sur quelle organisation travailler aujourd'hui (ex. Éditions Biosanté, Éditions VivaSanté, Optima Santé, Panthéon Recherche, Propulse Lab...). *Ne pas inspecter les actifs avant d'avoir reçu ce choix.*
+     - **Tour 2 (dès confirmation du choix)** : Résoudre le slug et l'identifiant du partenaire choisi, puis exécuter l'inspection silencieuse ci-dessous.
+   - **Mode Mono-Partenaire ou organisation résolue** :
      - Résoudre le **nom officiel de l'organisation** depuis `$PARTNER_NAME` (dans `.env`) ou depuis les fichiers du dépôt, et l'utiliser directement partout dans vos messages (ne jamais écrire « votre marque » ni le mot générique « votre organisation » dès lors que le nom réel est connu, ex. **Éditions Biosanté**).
-     - Lire en lecture seule via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` (avec `Authorization: Bearer $PRO_PILOT_WRITE_TOKEN`) :
+     - **Cas spécifique de Propulse Lab (`partnerId: 9`)** : En tant qu'organisation d'infrastructure/holding technique, Propulse Lab ne dispose pas de catalogue de publications éditoriales (`donnees-business/`), mais de sites documentaires et d'outils (`doc.propulse-lab.com`, `tools.propulse-lab.com`, `www.propulse-lab.com`). L'inspection s'oriente directement sur l'inventaire des sites vitrines actifs.
+     - **Pour les partenaires éditoriaux** : lire en lecture seule via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` (avec `Authorization: Bearer $PRO_PILOT_WRITE_TOKEN`) :
        1. `donnees-business/design-system.md` (charte, couleurs, polices)
        2. `skills/pro-web/variables.md` (domaines et identifiants de sites actifs)
        3. `donnees-business` (listing des produits disponibles)
@@ -32,10 +35,17 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
    - **Si l'utilisateur accepte** :
      Exécuter `POST https://pro-pilot.propulse-lab.com/api/onboarding/github-invite` avec `$PRO_PILOT_WRITE_TOKEN` :
      ```bash
-     set -a; source .env; set +a
      python3 - "<github_username_ou_vide>" <<'PY'
      import os, sys, json, urllib.request, urllib.error
-     token = os.environ.get("PRO_PILOT_WRITE_TOKEN", "").strip()
+     cfg = {}
+     if os.path.exists(".env"):
+         with open(".env", "r", encoding="utf-8") as f:
+             for line in f:
+                 line = line.strip()
+                 if line and not line.startswith("#") and "=" in line:
+                     k, v = line.split("=", 1)
+                     cfg[k.strip()] = v.strip().strip("'\"")
+     token = os.environ.get("PRO_PILOT_WRITE_TOKEN") or cfg.get("PRO_PILOT_WRITE_TOKEN", "").strip()
      gh = sys.argv[1].strip().lstrip("@") if len(sys.argv) > 1 else ""
      partner = os.environ.get("PARTNER_SLUG", "")
      payload = {}
@@ -78,7 +88,7 @@ Récupère et applique en direct la dernière version officielle de la skill cor
 ## Étape 2 — Lecture Live du Contexte Partenaire sur GitHub
 
 Ne jamais s'appuyer sur des copies locales figées :
-1. Charger `.env` (`[ -f .env ] && { set -a; source .env; set +a; }`).
+1. Charger la configuration d'accès (`.env`).
 2. Lire en temps réel les paramètres de la skill dans le dépôt privé du partenaire via le portail :
    - `GET https://pro-pilot.propulse-lab.com/api/repo?path=skills/pro-web/variables.md` (ajouter `&partner=<slug>` en mode multi-partenaires).
    - `GET https://pro-pilot.propulse-lab.com/api/repo?path=skills/pro-web/specificites.md` et `erreurs-connues.md`.
@@ -88,7 +98,7 @@ Ne jamais s'appuyer sur des copies locales figées :
 
 ## Étape 3 — Interaction, Aperçu Local & Validation Humaine
 
-1. **Si une donnée essentielle manque** (ou contient `[À COMPLÉTER]`) : poser 1 à 3 questions précises avant de générer.
+1. **Si une donnée essentielle manque** (ou contient `[À COMPLÉTER]`) : poser 1 à 3 questions précises avant de générer (rappel : l'identifiant GTM est déjà **prérempli** dans `skills/pro-web/variables.md` et ne doit jamais être demandé à l'utilisateur ; le leadcode d'opt-in se crée sur **Pro Acquisitions** `https://pro-acquisitions.propulse-lab.com` — zéro mention de Salesforce).
 2. **Si toutes les données sont réunies** : générer le fichier HTML complet (`<!DOCTYPE html>` à `</html>`, UTF-8) dans `.tmp/`, faire valider l'aperçu par l'utilisateur et demander confirmation explicite (`domaine`, `websiteId`, `key`) avant tout appel d'écriture sur `https://api-pro-web.propulse-lab.com`.
 
 ---

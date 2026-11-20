@@ -73,7 +73,7 @@ PY
 Avant toute génération ou publication :
 
 1. **Variables d'environnement (`.env`)** :
-   - Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`. Si `.env` est absent du dossier courant, vérifier la présence d'un sous-dossier `pro-pilot-*/.env` (dossier parent ouvert par erreur) et indiquer à l'utilisateur d'ouvrir ce dossier dans son IA.
+   - Charger la configuration locale (`.env`). Si `.env` est absent du dossier courant, vérifier la présence d'un sous-dossier `pro-pilot-*/.env` (dossier parent ouvert par erreur) et indiquer à l'utilisateur d'ouvrir ce dossier dans son IA.
    - `PRO_WEB_API_KEY` : clé d'accès à l'API publique Pro Web (header `x-api-key`), fournie automatiquement par le portail `https://pro-pilot.propulse-lab.com/`. **Ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : si `.env` est absent ou `PRO_WEB_API_KEY` vide (mauvais dossier ouvert, lien de configuration déjà utilisé une fois ou environnement sans accès réseau), inviter simplement l'utilisateur à ouvrir son dossier `pro-pilot-<organisation>/` ou à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour copier un prompt neuf — et se limiter à la rédaction et à l'aperçu local `.tmp/` en attendant.
    - `PARTNER_ID` : identifiant numérique du partenaire. S'il est absent de `.env` (mode multi-partenaires ou dépôt mutualisé multi-organisations), le résoudre obligatoirement depuis la colonne `partnerId` du domaine cible dans `skills/pro-web/variables.md`.
    - `PARTNER_NAME` : nom officiel de l'organisation (ex. `Éditions Biosanté`). Toujours utiliser ce nom réel dans les échanges avec l'utilisateur au lieu du terme générique « organisation » (ne jamais employer le mot « marque »).
@@ -82,8 +82,7 @@ Avant toute génération ou publication :
 2. **Lecture en direct sur GitHub via `GET https://pro-pilot.propulse-lab.com/api/repo`** :
    - En mode mono-partenaire (y compris sur un dépôt mutualisé multi-organisations) :
      ```bash
-     set -a; source .env; set +a
-     curl -fsSL -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
+     curl -fsSL -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
        "https://pro-pilot.propulse-lab.com/api/repo?path=skills/pro-web/variables.md"
      ```
    - En mode multi-partenaires (compte d'équipe transverse), ajouter `&partner=<slug>` (résolu dynamiquement selon l'organisation cible, ex. `mon-partenaire`).
@@ -115,10 +114,18 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
    <script async="" src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>
    ```
    Propage automatiquement `utm_*`, `leadcode`, `salescode`, `bdc`, `url2`/`bdc2`, `urlBdc`. Les liens génériques `https://secure.bdc.com` ne sont réécrits par ce script que si l'URL de visite contient `url2` et `bdc2` : préférer le lien direct du bon de commande (+ `salescode`) dès qu'il est connu.
-3. **Conteneur Google Tag Manager (`GTM-XXXXXXX`)** :
+3. **Conteneur Google Tag Manager (`GTM-XXXXXXX`) — Préremplissage automatique SSOT** :
    - Snippet `<script>` dans `<head>` et `<noscript>` juste après `<body>` selon l'identifiant GTM de `skills/pro-web/variables.md` (ou celui déjà présent sur la page modifiée).
-4. **Scripts de formulaires existants à préserver intacts s'ils sont présents** :
-   - `leadBox-v1.0.0.js`, `email-autocomplete.js`, `eventTriggerV1.js`, `redirect-v1.0.0.js`, `lead/assets/tel-input/js/intlTelInput.js`.
+   - **GTM est prérempli** : l'identifiant GTM est documenté dans `variables.md` pour chaque site ou au niveau du partenaire. **Ne jamais demander l'identifiant GTM à l'utilisateur** : l'IA l'injecte directement et silencieusement dans le code généré.
+4. **Formulaires d'opt-in & Pro Acquisitions (`leadBox-v1.0.0.js`)** :
+   - **Création du `leadcode`** : Le partenaire crée et gère lui-même ses leadcodes de liste directement sur la plateforme **Pro Acquisitions** (`https://pro-acquisitions.propulse-lab.com`). **Ne jamais renvoyer l'utilisateur vers Salesforce ni vers une équipe CRM externe.**
+   - **Endpoint d'inscription LeadBox officiel** : `POST https://lead.<domaine-partenaire>/api/lead/signup` (documenté dans `skills/pro-web/variables.md`).
+   - **Hiérarchie d'attribution du Leadcode (Override dynamique SSOT)** :
+     1. **Source prioritaire** : Le paramètre d'URL `?leadcode=...` provenant des campagnes marketing (Ads, newsletters, affiliation).
+     2. **Override automatique** : Le script du formulaire lit `leadcode` dans `location.search` et **écrase systématiquement** toute valeur par défaut lors de la soumission.
+     3. **Valeur en dur = filet de sécurité (fallback)** : La valeur inscrite en dur dans le formulaire (`<input type="hidden" name="leadcode" value="...">`) n'est qu'un repli pour les visites directes sans paramètre d'URL.
+     4. **Zéro blocage de mise en ligne** : **Ne jamais bloquer la publication d'un site pour attendre un leadcode**. Utiliser le leadcode de repli par défaut de l'organisation (documenté dans `variables.md`) et déployer sans attendre.
+   - Scripts de formulaires existants à préserver intacts s'ils sont présents : `leadBox-v1.0.0.js`, `email-autocomplete.js`, `eventTriggerV1.js`, `redirect-v1.0.0.js`, `lead/assets/tel-input/js/intlTelInput.js`.
 
 ---
 
@@ -135,7 +142,6 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 1. **Contrôle pré-vol & sauvegarde anti-écrasement (`GET /objects/list/{websiteId}`)** :
    ```bash
-   set -a; source .env; set +a
    curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
      -H "x-api-key: ${PRO_WEB_API_KEY}"
    ```
@@ -149,7 +155,6 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 3. **Étape 1/3 API — Obtention de l'URL signée S3 (`partnerId` numérique obligatoire)** :
    ```bash
-   set -a; source .env; set +a
    curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
      -H "x-api-key: ${PRO_WEB_API_KEY}" \
      -H "Content-Type: application/json" \
@@ -172,7 +177,6 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 5. **Étape 3/3 API — Enregistrement en base & invalidation (`upsert`)** :
    ```bash
-   set -a; source .env; set +a
    curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
      -H "x-api-key: ${PRO_WEB_API_KEY}" \
      -H "Content-Type: application/json" \
@@ -199,7 +203,6 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 ### Action B — Lister ou inspecter les objets d'un site
 ```bash
-set -a; source .env; set +a
 curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
   -H "x-api-key: ${PRO_WEB_API_KEY}"
 ```
@@ -207,6 +210,53 @@ curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partne
 
 ### Action C — Publier des images ou assets liés (`DOCUMENT:IMAGE`)
 Utiliser la convention de clé `<page_key>_assets/img/<fichier>` (ex. `pages/<slug>_assets/img/<fichier>` ou `webinaire/<slug>_assets/img/<fichier>` pour rester aligné sur la purge CloudFront `/<key>_assets/*`) avec `"type": "DOCUMENT"`, `"subtype": "DOCUMENT:IMAGE"` et le MIME exact (`image/png`, `image/jpeg`, `image/webp`) sur `signed-url` + `PUT S3` + `upsert`, puis référencer l'URL absolue `https://${DOMAIN_NAME}/${KEY}` dans le HTML.
+
+### Action D — Déployer un site statique multi-pages (Mode Batch)
+Quand un projet comporte plusieurs pages HTML liées (ex. `index.html`, `carte.html`, `super-retraite.html`, `mentions-legales.html`) :
+1. **Validation globale en aperçu local** : générer l'ensemble des pages dans `.tmp/<projet>/site/` et faire valider la navigation locale à l'utilisateur.
+2. **Garde-fou Leadcode & Déploiement Immédiat (Zéro Blocage)** :
+   - Historiquement et par design, le `leadcode` est véhiculé dynamiquement dans les paramètres d'URL (`?leadcode=...`) des campagnes marketing et **écrase automatiquement** (`override`) la valeur du formulaire.
+   - La valeur inscrite en dur dans le formulaire (`<input type="hidden" name="leadcode">`) n'est qu'un **fallback de secours** pour les visites directes sans paramètre d'URL.
+   - **En aucun cas l'IA ne doit bloquer ou différer le déploiement** : inscrire le leadcode de repli du partenaire (ex. `GP18EXTPTFSIWGEN1GENALL` ou le code global de `variables.md`) et déployer immédiatement. Le trafic des campagnes sera automatiquement attribué via l'URL.
+3. **Boucle séquentielle de publication** : pour chaque fichier du lot, exécuter la séquence :
+   - `POST /objects/signed-url` avec `key: <nom-du-fichier>` (ex. `index.html`, `carte.html`, `super-retraite.html`, `mentions-legales.html`).
+   - `PUT ${SIGNED_URL}` avec le contenu HTML binaire UTF-8 (`--data-binary @"path/to/file.html"`).
+   - `POST /objects/upsert` avec `"type": "PAGE"`, `"subtype": "PAGE:OTHER"` (ou `PAGE:LEADGEN`), `"originalFileName": "<nom-du-fichier>"`.
+4. **Vérification HTTP de chaque URL** :
+   ```bash
+   for page in index.html carte.html super-retraite.html mentions-legales.html; do
+     curl -sI -m 10 "https://${DOMAIN_NAME}/${page}" | head -n 1
+   done
+   ```
+
+### Action E — Pattern Blog Vibecodé (Consommation de `articles.json` & `/articles/<slug>.json`)
+Quand l'utilisateur souhaite créer ou vibecoder un blog, un flux d'actualités ou une section dépêches/daily sur un site Pro Web :
+1. **Source de Vérité des Articles (`Atomic OS`)** :
+   - Les articles sont automatiquement publiés par la brique `/pro-daily` sous forme de fichiers statiques déposés sur le bucket S3 du site :
+     - **Index global** : `https://${DOMAIN_NAME}/articles.json` (liste ordonnée, extraits, dates, auteurs, tags, URLs).
+     - **Fiche unitaire** : `https://${DOMAIN_NAME}/articles/<slug>.json` (corps HTML complet `content_html`, CTA, mentions).
+     - **Page HTML statique** : `https://${DOMAIN_NAME}/articles/<slug>/index.html` (générée automatiquement pour le SEO).
+2. **Contrat d'intégration Frontend (KISS Vanilla JS)** :
+   - Pour afficher la liste/grille d'articles sur la page d'accueil ou la page `/blog` :
+     ```javascript
+     fetch('/articles.json')
+       .then(r => r.json())
+       .then(data => {
+         const container = document.getElementById('articles-grid');
+         if (!container || !data.articles) return;
+         container.innerHTML = data.articles.map(art => `
+           <article class="border border-stone-200 rounded-xl p-6 bg-white hover:shadow-md transition">
+             ${art.featured_image ? `<img src="${art.featured_image}" alt="${art.title}" class="rounded-lg mb-4 w-full h-48 object-cover">` : ''}
+             <div class="text-xs text-stone-500 mb-2">${art.date_formatted} &bull; ${art.reading_time_minutes} min</div>
+             <h3 class="text-xl font-bold mb-3"><a href="${art.html_url}" class="hover:underline">${art.title}</a></h3>
+             <p class="text-stone-600 text-sm mb-4 line-clamp-3">${art.excerpt}</p>
+             <a href="${art.html_url}" class="text-sm font-semibold text-blue-600 hover:underline">Lire la suite &rarr;</a>
+           </article>
+         `).join('');
+       })
+       .catch(err => console.error('Erreur chargement articles.json:', err));
+     ```
+3. **Zéro CMS requis** : ne jamais proposer de déployer WordPress ou une base de données MySQL pour un simple blog sur un site vitrine Pro Web. Utiliser exclusivement ce standard `articles.json` alimenté par `/pro-daily`.
 
 ---
 

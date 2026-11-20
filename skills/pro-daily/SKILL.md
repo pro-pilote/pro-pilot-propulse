@@ -58,8 +58,31 @@ Lorsqu'un éditeur dépose son document source (Google Doc ou fichier `.docx` / 
 
 ---
 
-## 5. Étape 3B — Publication Article sur Site Statique (`type: "STATIC"`) via Pro Web API
+## 5. Étape 3B — Publication Article sur Site Statique / Vibecodé (`type: "STATIC"`)
 
-1. Vérifier `GET https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}` (`x-api-key: ${PRO_WEB_API_KEY}`), sauvegarder l'existant dans `.tmp/backups/${SLUG}.html` et inclure `headerTools.js` + `preserveParamsV2.js`.
-2. Uploader les images (`DOCUMENT:IMAGE`, `key: "assets/images/daily/<slug>/img_<hash>.<ext>"`) puis l'article HTML (`PAGE:OTHER`) sur la clé propre sans slash final : `key: "articles/<slug>"` (ne jamais utiliser `<slug>/index.html` qui provoque un `500` sur `/<slug>/`).
-3. Vérifier `curl -sS "https://${DOMAIN_NAME}/articles/${SLUG}"` (`HTTP 200` + `<h1`) sans slash final.
+1. **Génération Double Contrat (JSON + HTML)** :
+   - `/articles.json` : mise à jour de l'index chronologique des articles (id, slug, title, date, excerpt, author, featured_image, urls).
+   - `/articles/<slug>.json` : fiche unitaire complète pour la consommation dynamique par les composants JavaScript du blog vibecodé.
+   - `/articles/<slug>/index.html` (ou `<slug>.html`) : rendu HTML complet de l'article avec meta tags OpenGraph et microdonnées pour le référencement naturel (SEO).
+2. **Déploiement S3 / CloudFront via Pro Web** :
+   - Uploader les images dans `assets/images/daily/<slug>/img_<hash>.<ext>`.
+   - Déposer `articles.json`, `/articles/<slug>.json` et la page HTML sur le bucket S3 du site (`ppl static push <domain> --go` ou API Pro Web).
+3. **Vérification HTTP & Cache** :
+   - Vérifier `curl -sI "https://${DOMAIN_NAME}/articles.json"` (`HTTP 200`).
+   - Vérifier `curl -sI "https://${DOMAIN_NAME}/articles/${SLUG}/"` (`HTTP 200`).
+
+---
+
+## 6. Options de Découplage CLI (`--target`)
+
+Par défaut, `/pro-daily` publie simultanément sur le Web et sur Salesforce. L'utilisateur ou l'assistant peut découpler les canaux :
+- `--target all` (défaut) : publication coordonnée (Email SFMC #195/#207 + Article Web).
+- `--target web` : publication exclusive sur le site (Statique Vibecodé ou WordPress), sans aucun appel à l'API Salesforce.
+- `--target sfmc` : génération et envoi exclusif vers Salesforce Marketing Cloud.
+
+---
+
+## 7. Observabilité & Télémétrie Native
+
+Chaque publication `/pro-daily` enregistre sa métrique dans `~/.gemini/antigravity/state/telemetry/briques_metrics.jsonl` (durée, statut, IDs créés) consultable par `python3 ~/Outils/harnais/os_status.py`.
+

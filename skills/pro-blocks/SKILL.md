@@ -50,11 +50,10 @@ PY
 ## 1. Découverte des Sites Autorisés & Accueil Proactif (`GET /api/ai-child/sites`)
 
 Avant toute opération :
-1. Charger `.env` : `[ -f .env ] && { set -a; source .env; set +a; }`.
+1. Charger la configuration locale (`.env`).
 2. Vérifier la présence de `PRO_PILOT_WRITE_TOKEN` (aucun mot de passe WordPress n'est requis dans `.env`).
 3. Lister les sites Fulfi accessibles pour cette organisation :
    ```bash
-   set -a; source .env; set +a
    curl -fsS -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
      "https://pro-pilot.propulse-lab.com/api/ai-child/sites"
    ```
@@ -92,7 +91,6 @@ Avant toute opération :
 
 ### Étape 1 — Lecture & Sauvegarde Préventive Obligatoire
 ```bash
-set -a; source .env; set +a
 mkdir -p .tmp
 curl -fsS -m 15 -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   "https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}" \
@@ -103,7 +101,6 @@ Enregistrer systématiquement une sauvegarde horodatée de `.overrides` et `.ver
 ### Étape 2 — Patch Minimal sur `.overrides` & Validation Serveur (`POST /validate`)
 Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis valider sans écrire en prod :
 ```bash
-set -a; source .env; set +a
 curl --fail-with-body -sS -m 30 -X POST \
   -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -122,7 +119,6 @@ Attendre un accord explicite (**« Oui » / « Go » / « Publie »**) avant d'a
 
 ### Étape 4 — Publication (`PUT /api/ai-child/platform/<slug>`) & Passerelle Design System
 ```bash
-set -a; source .env; set +a
 curl --fail-with-body -sS -m 30 -X PUT \
   -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
   -H "Content-Type: application/json" \
