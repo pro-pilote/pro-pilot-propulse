@@ -20,7 +20,7 @@
       "summary": "Alias rétrocompatible de /learn pour la clôture et l'enregistrement de règles"
     },
     "pro-blocks": {
-      "version": "1.0.4",
+      "version": "1.1.0",
       "status": "partner_scoped",
       "eligible_partner_ids": [12, 25, 26],
       "path": "skills/pro-blocks/SKILL.md",
