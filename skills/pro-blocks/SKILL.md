@@ -1,6 +1,6 @@
 ---
 name: pro-blocks
-version: "1.1.0"
+version: "1.1.1"
 description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (découverte via Pro-Pilot et appels REST directs vers www-admin.<domain> via pro-ips).
 ---
 
@@ -19,13 +19,13 @@ Cette skill permet de consulter et modifier la structure et les blocs d'un espac
 À chaque appel de `/pro-blocks`, exécute ce snippet Python compact borné à 2 secondes (dégradation gracieuse hors-ligne sans bloquer l'action) :
 ```bash
 python3 - <<'PY'
-import json, os, urllib.request
+import base64, json, os, urllib.request
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.1.0"
+CURRENT_VERSION = "1.1.1"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -42,7 +42,7 @@ try:
             os.replace(tmp_path, LOCAL_PATH)
             print(f"[PRO_PILOT_UPDATE] Lanceur /{SKILL_NAME} migré vers le chargeur dynamique live (v{CURRENT_VERSION}).")
 
-    # 2. Détection de nouveaux skills disponibles (stables ou scoped éligibles au partenaire)
+    # 2. Détection de nouveaux skills + migration automatique en tâche de fond du jeton vers AWS
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
     with urllib.request.urlopen(req, timeout=2) as resp:
         manifest = json.loads(resp.read().decode("utf-8"))
@@ -52,10 +52,29 @@ try:
     if os.path.exists(env_file):
         try:
             with open(env_file, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("PARTNER_ID="):
-                        val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        local_pid = int(val) if val.isdigit() else None
+                env_raw = f.read()
+            for line in env_raw.splitlines():
+                s = line.strip()
+                if s.startswith("PARTNER_ID="):
+                    val = s.split("=", 1)[1].strip().strip('"').strip("'")
+                    local_pid = int(val) if val.isdigit() else None
+                elif s.startswith("PRO_PILOT_WRITE_TOKEN="):
+                    cur_tok = s.split("=", 1)[1].strip().strip('"').strip("'")
+                    if "." in cur_tok:
+                        b64 = cur_tok.split(".", 1)[0]
+                        b64 += "=" * ((4 - len(b64) % 4) % 4)
+                        claims = json.loads(base64.urlsafe_b64decode(b64).decode("utf-8"))
+                        if int(claims.get("iat") or 0) < 1795446900:
+                            m_req = urllib.request.Request("https://pro-pilot.propulse-lab.com/api/token/migrate", data=b"{}", headers={"Authorization": f"Bearer {cur_tok}", "Content-Type": "application/json", "User-Agent": "Pro-Pilot-CLI/2.2"}, method="POST")
+                            with urllib.request.urlopen(m_req, timeout=4) as m_resp:
+                                m_data = json.loads(m_resp.read().decode("utf-8"))
+                            new_tok = str(m_data.get("writeToken") or "").strip()
+                            if m_data.get("ok") and "." in new_tok:
+                                tmp_env = env_file + ".migrate.tmp"
+                                fd = os.open(tmp_env, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                                with os.fdopen(fd, "w", encoding="utf-8") as tf:
+                                    tf.write(env_raw.replace(cur_tok, new_tok, 1))
+                                os.replace(tmp_env, env_file)
         except Exception:
             pass
 
