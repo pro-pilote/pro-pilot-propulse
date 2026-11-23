@@ -1,20 +1,19 @@
 ---
 name: learn
 version: "2.2.1"
-description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot. Alias rétrocompatible : /fin.
+description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot.
 ---
 
 # Skill `/learn` — Apprentissage Continu & Bilan Rétrospectif de Session
 
 Cette skill permet de capitaliser sur l'expérience, d'enregistrer des préférences, corrections, règles éditoriales ou graphiques et d'effectuer le bilan complet d'une session de travail. Les enseignements sont enregistrés directement sur le dépôt GitHub privé du partenaire dans `donnees-business/_inbox/` sans manipulation Git manuelle ni conflit d'écriture.
 
-> **Alias rétrocompatible** : La commande `/fin` reste 100 % opérationnelle et délègue directement à `/learn`.
 
 ---
 
 ## 0. Contrôle de Version Ultra-Rapide (< 100 ms) & Nouveaux Skills
 
-À chaque appel de `/learn` (ou `/fin`), exécute ce snippet Python compact borné à 2 secondes (dégradation gracieuse hors-ligne sans bloquer l'action) :
+À chaque appel de `/learn`, exécute ce snippet Python compact borné à 2 secondes (dégradation gracieuse hors-ligne sans bloquer l'action) :
 ```bash
 python3 - <<'PY'
 import json, os, urllib.request
@@ -68,7 +67,7 @@ Utilisé **en cours de travail** dès qu'une règle précise, une correction de 
   - `/learn Le logo officiel dans le header est logo-white.svg et non logo.png.`
 - **Action de l'IA** : Rédiger une note concise ciblée, catégorisée et mappée vers le bon fichier cible.
 
-### Mode B : Clôture & Bilan Rétrospectif de Session (`/learn` ou `/learn bilan` ou `/fin`)
+### Mode B : Clôture & Bilan Rétrospectif de Session (`/learn` ou `/learn bilan`)
 Utilisé **à la fin d'une session de travail**.
 > **Règle absolue pour l'IA** : Tu **DOIS** parcourir l'intégralité du fil de discussion depuis le **premier message** de la session jusqu'au dernier. Tu ne dois pas te contenter des derniers échanges.
 

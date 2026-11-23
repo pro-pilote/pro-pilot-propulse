@@ -4,7 +4,7 @@ Le cœur de **Pro-Pilot** repose sur l'apprentissage continu : lorsqu'un partena
 
 ## 1. Quand déclencher une remontée de Feedback ?
 
-Déclenche `/learn` (ou `/fin`) en cours d'échange ou en clôture dès que l'utilisateur :
+Déclenche `/learn` en cours d'échange ou en clôture dès que l'utilisateur :
 - Corrige une erreur produite par l'IA sur une skill (ex. oubli d'un paramètre API, variable GTM erronée, encodage ou structure mobile).
 - Précise une règle business ou graphique permanente de son organisation qui n'était pas encore écrite dans son dépôt.
 
@@ -18,8 +18,8 @@ Déclenche `/learn` (ou `/fin`) en cours d'échange ou en clôture dès que l'ut
 | Charte graphique, couleur, typographie ou composant visuel | `donnees-business/design-system.md` |
 | Offre, tarif, promesse, FAQ ou mention légale d'un produit | `donnees-business/<sku>/fiche-produit.md` |
 
-## 3. Enregistrement Append-Only via `/learn` (alias `/fin`)
+## 3. Enregistrement Append-Only via `/learn`
 
 1. Corrige d'abord immédiatement le travail en cours pour satisfaire la demande du partenaire.
-2. Exécute la skill [`/learn`](../skills/learn/SKILL.md) (ou `/fin`) (`POST https://pro-pilot.propulse-lab.com/api/feedback`) qui écrit une note horodatée dans `donnees-business/_inbox/<ISO>_<auteur>_<sujet>_<uuid8>.md` sans conflit Git.
+2. Exécute la skill [`/learn`](../skills/learn/SKILL.md) (`POST https://pro-pilot.propulse-lab.com/api/feedback`) qui écrit une note horodatée dans `donnees-business/_inbox/<ISO>_<auteur>_<sujet>_<uuid8>.md` sans conflit Git.
 3. Les notes d'`_inbox/` sont consolidées dans les fichiers `skills/<nom-skill>/*` ou `donnees-business/*` du partenaire (ou dans le socle public `pro-pilot-propulse/skills/*` si la règle est universelle).

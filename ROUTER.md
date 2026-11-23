@@ -83,7 +83,7 @@ Récupère et applique en direct la dernière version officielle de la skill cor
 2. **Modification de la structure et des blocs d'un espace membre (onglets, blocs, branding, options)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes abonnés actives : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-blocks/SKILL.md` (commande `/pro-blocks`).
 3. **Apprentissage continu, correction, retour d'expérience, ajustement de charte ou bilan rétrospectif de session formulé par l'utilisateur** :
-   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/learn/SKILL.md` (commande `/learn`, alias `/fin`).
+   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/learn/SKILL.md` (commande `/learn`).
 
 *(Rappel de sécurité : aucune suppression d'objet n'est autorisée par API en v1 — toute suppression définitive s'effectue manuellement dans l'interface web Pro Web).*
 
@@ -109,4 +109,4 @@ Ne jamais s'appuyer sur des copies locales figées :
 
 ## Étape 4 — Boucle d'Amélioration Continue
 
-Dès que l'utilisateur corrige un rendu, un style ou une règle (ou en clôture d'échange), appliquer `/learn` (ou `/fin`) pour consigner la note en mode append-only dans `donnees-business/_inbox/` sur le dépôt GitHub du partenaire via `POST https://pro-pilot.propulse-lab.com/api/feedback`.
+Dès que l'utilisateur corrige un rendu, un style ou une règle (ou en clôture d'échange), appliquer `/learn` pour consigner la note en mode append-only dans `donnees-business/_inbox/` sur le dépôt GitHub du partenaire via `POST https://pro-pilot.propulse-lab.com/api/feedback`.

@@ -21,8 +21,7 @@ pro-pilot-propulse/
     │   ├── pro-web.md                     # Chargeur live /pro-web
     │   ├── pro-blocks.md                  # Chargeur live /pro-blocks
     │   ├── pro-daily.md                   # Chargeur live /pro-daily (interne)
-    │   ├── learn.md                       # Chargeur live /learn
-    │   └── fin.md                         # Alias live /fin (délègue à /learn)
+    │   └── learn.md                       # Chargeur live /learn
     ├── pro-web/
     │   └── SKILL.md                       # Création, retouche et publication d'objets Pro Web
     ├── pro-blocks/
@@ -36,5 +35,5 @@ pro-pilot-propulse/
 ## Fonctionnement Sans Copie Obsolète
 
 1. Le poste utilisateur ne clone aucun dépôt : il conserve uniquement son fichier `.env` local (`chmod 600`) et les lanceurs légers `skills/_loaders/*.md` dans `.claude/commands/`.
-2. À chaque appel (`/pro-web`, `/pro-blocks`, `/learn`, `/fin`), le lanceur récupère en direct la dernière version de `skills/<nom-skill>/SKILL.md` sur `main` (mise à jour instantanée pour tous les utilisateurs).
+2. À chaque appel (`/pro-web`, `/pro-blocks`, `/learn`), le lanceur récupère en direct la dernière version de `skills/<nom-skill>/SKILL.md` sur `main` (mise à jour instantanée pour tous les utilisateurs).
 3. Les données métier et les paramètres propres au partenaire (`donnees-business/` et `skills/<nom-skill>/{variables,specificites,erreurs-connues}.md`) résident dans le dépôt privé `pro-pilot-<partner>` et sont lus en temps réel via `GET https://pro-pilot.propulse-lab.com/api/repo?path=...` authentifié par `$PRO_PILOT_WRITE_TOKEN`.

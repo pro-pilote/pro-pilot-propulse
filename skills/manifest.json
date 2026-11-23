@@ -13,12 +13,6 @@
       "path": "skills/learn/SKILL.md",
       "summary": "Apprentissage continu de règles métier et bilan rétrospectif de session dans l'inbox GitHub"
     },
-    "fin": {
-      "version": "2.2.1",
-      "status": "stable",
-      "path": "skills/learn/SKILL.md",
-      "summary": "Alias rétrocompatible de /learn pour la clôture et l'enregistrement de règles"
-    },
     "pro-blocks": {
       "version": "1.1.0",
       "status": "partner_scoped",
