@@ -1,6 +1,6 @@
 ---
 name: learn
-version: "2.2.2"
+version: "2.2.3"
 description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot.
 ---
 
@@ -22,7 +22,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "learn"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.2.2"
+CURRENT_VERSION = "2.2.3"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -82,10 +82,14 @@ try:
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
 
-    # 3. Signalement des anciens lanceurs dépréciés
+    # 3. Suppression automatique en tâche de fond des anciens lanceurs dépréciés (Mac & Windows)
     for old_cmd in ("fin", "feedback"):
-        if os.path.exists(f".claude/commands/{old_cmd}.md"):
-            print(f"[PRO_PILOT_DEPRECATED] .claude/commands/{old_cmd}.md est obsolète (remplacé par /learn) et peut être supprimé.")
+        old_p = os.path.join(".claude", "commands", f"{old_cmd}.md")
+        if os.path.exists(old_p):
+            try:
+                os.remove(old_p)
+            except OSError:
+                pass
 except Exception:
     pass
 PY

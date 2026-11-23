@@ -1,6 +1,6 @@
 ---
 name: pro-blocks
-version: "1.1.1"
+version: "1.1.2"
 description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (découverte via Pro-Pilot et appels REST directs vers www-admin.<domain> via pro-ips).
 ---
 
@@ -25,7 +25,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.1.1"
+CURRENT_VERSION = "1.1.2"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -85,10 +85,14 @@ try:
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
 
-    # 3. Signalement des anciens lanceurs dépréciés
+    # 3. Suppression automatique en tâche de fond des anciens lanceurs dépréciés (Mac & Windows)
     for old_cmd in ("fin", "feedback"):
-        if os.path.exists(f".claude/commands/{old_cmd}.md"):
-            print(f"[PRO_PILOT_DEPRECATED] .claude/commands/{old_cmd}.md est obsolète (remplacé par /learn) et peut être supprimé.")
+        old_p = os.path.join(".claude", "commands", f"{old_cmd}.md")
+        if os.path.exists(old_p):
+            try:
+                os.remove(old_p)
+            except OSError:
+                pass
 except Exception:
     pass
 PY
