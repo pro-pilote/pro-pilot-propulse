@@ -1,6 +1,6 @@
 ---
 name: learn
-version: "2.2.0"
+version: "2.2.1"
 description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot. Alias rétrocompatible : /fin.
 ---
 
@@ -22,7 +22,7 @@ import json, os, urllib.request
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 SKILL_NAME = "learn"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.2.0"
+CURRENT_VERSION = "2.2.1"
 
 try:
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
@@ -127,7 +127,10 @@ try:
         res = json.loads(resp.read().decode("utf-8"))
         print(f"Succes: {res.get('path')} enregistre sur GitHub ({res.get('repo')}) - commit {str(res.get('commitSha', ''))[:7]}")
 except urllib.error.HTTPError as err:
-    print(f"Erreur HTTP {err.code}: {err.read().decode('utf-8')}")
+    if err.code == 401:
+        print("SESSION_EXPIRED_401: Jeton expiré ou renouvelé — reconnectez-vous une fois sur https://pro-pilot.propulse-lab.com/ pour actualiser l'espace.")
+    else:
+        print(f"Erreur HTTP {err.code}: {err.read().decode('utf-8')}")
     sys.exit(1)
 PY
 ```

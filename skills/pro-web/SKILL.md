@@ -1,12 +1,12 @@
 ---
 name: pro-web
-version: "2.1.2"
+version: "2.1.3"
 description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle et lecture live du depot partenaire sur GitHub.
 ---
 
 # Skill `/pro-web` — Création, Retouche et Publication d'Objets Web
 
-Cette skill standardise toutes les opérations sur l'infrastructure Pro Web via son API publique officielle (`https://api-pro-web.propulse-lab.com`). Elle lit en temps réel les données et paramètres du dépôt GitHub du partenaire via le portail Pro-Pilot afin d'éliminer toute copie locale obsolète.
+Cette skill standardise toutes les opérations sur l'infrastructure Pro Web (`${PRO_WEB_PUBLIC_API_URL:-https://api-pro-web.propulse-lab.com}`). Elle lit en temps réel les données et paramètres du dépôt GitHub du partenaire via le portail Pro-Pilot afin d'éliminer toute copie locale obsolète.
 
 ---
 
@@ -20,7 +20,7 @@ import json, os, urllib.request
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 SKILL_NAME = "pro-web"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.1.2"
+CURRENT_VERSION = "2.1.3"
 
 try:
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.1"})
@@ -72,9 +72,13 @@ PY
 
 Avant toute génération ou publication :
 
-1. **Variables d'environnement (`.env`)** :
+1. **Variables d'environnement (`.env`) & Résolution Non-Régressive des Clés** :
    - Charger la configuration locale (`.env`). Si `.env` est absent du dossier courant, vérifier la présence d'un sous-dossier `pro-pilot-*/.env` (dossier parent ouvert par erreur) et indiquer à l'utilisateur d'ouvrir ce dossier dans son IA.
-   - `PRO_WEB_API_KEY` : clé d'accès à l'API publique Pro Web (header `x-api-key`), fournie automatiquement par le portail `https://pro-pilot.propulse-lab.com/`. **Ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : si `.env` est absent ou `PRO_WEB_API_KEY` vide (mauvais dossier ouvert, lien de configuration déjà utilisé une fois ou environnement sans accès réseau), inviter simplement l'utilisateur à ouvrir son dossier `pro-pilot-<organisation>/` ou à se reconnecter sur `https://pro-pilot.propulse-lab.com/` pour copier un prompt neuf — et se limiter à la rédaction et à l'aperçu local `.tmp/` en attendant.
+   - `PRO_WEB_PUBLIC_API_URL` : URL de l'API Pro Web (`https://api-pro-web.propulse-lab.com` par défaut, ou `https://pro-pilot.propulse-lab.com/api/pro-web` si le Broker est activé dans `.env`).
+   - **Résolution ordonnée de la clé Pro Web (`EFFECTIVE_PRO_WEB_KEY`)** :
+     1. `PRO_WEB_API_KEY` (défini dans `.env` pour tout partenaire mono-organisation ou mutualisé `others`, ou en mode Broker) ;
+     2. sinon, en mode multi-partenaires, la variable d'environnement du poste `PRO_WEB_API_KEY_${PARTNER_ID}` (avec repli sur `PRO_WEB_API_KEY_9` si `PARTNER_ID` fait partie du périmètre mutualisé `6, 8, 9, 13, 16, 18, 19, 22`).
+     - **Ne jamais demander à l'utilisateur de fournir ou coller une clé API à la main** : si aucune clé Pro Web n'est disponible après ces 2 niveaux (ex. organisation sans clé dédiée encore ouverte comme Innovia/Nutriorigines), conserver 100 % de la lecture GitHub (`/api/repo`), de la rédaction HTML et de l'aperçu local `.tmp/` sans prétendre que le `.env` est invalide. Uniquement si `.env` est introuvable, si `PRO_PILOT_WRITE_TOKEN` est vide, ou si `/api/repo` renvoie **`HTTP 401`**, inviter l'utilisateur à se reconnecter une fois sur `https://pro-pilot.propulse-lab.com/` pour actualiser son espace.
    - `PARTNER_ID` : identifiant numérique du partenaire. S'il est absent de `.env` (mode multi-partenaires ou dépôt mutualisé multi-organisations), le résoudre obligatoirement depuis la colonne `partnerId` du domaine cible dans `skills/pro-web/variables.md`.
    - `PARTNER_NAME` : nom officiel de l'organisation (ex. `Éditions Biosanté`). Toujours utiliser ce nom réel dans les échanges avec l'utilisateur au lieu du terme générique « organisation » (ne jamais employer le mot « marque »).
    - `PRO_PILOT_WRITE_TOKEN` : jeton signé permettant de lire en direct le dépôt privé du partenaire (`/api/repo`) et d'enregistrer les retours (`/api/feedback`).
@@ -140,10 +144,15 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 ### Action A — Créer, retoucher et publier un objet (`PAGE` ou `DOCUMENT`)
 
-1. **Contrôle pré-vol & sauvegarde anti-écrasement (`GET /objects/list/{websiteId}`)** :
+1. **Résolution de `EFFECTIVE_PRO_WEB_KEY` & Contrôle pré-vol (`GET /objects/list/{websiteId}`)** :
    ```bash
-   curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}"
+   EFFECTIVE_PRO_WEB_KEY="${PRO_WEB_API_KEY:-}"
+   if [ -z "$EFFECTIVE_PRO_WEB_KEY" ] && [ -n "${PARTNER_ID:-}" ]; then
+     EFFECTIVE_PRO_WEB_KEY="$(printenv "PRO_WEB_API_KEY_${PARTNER_ID}" 2>/dev/null || true)"
+     case "$PARTNER_ID" in 6|8|9|13|16|18|19|22) [ -n "$EFFECTIVE_PRO_WEB_KEY" ] || EFFECTIVE_PRO_WEB_KEY="${PRO_WEB_API_KEY_9:-}" ;; esac
+   fi
+   curl -sS "${PRO_WEB_PUBLIC_API_URL:-https://api-pro-web.propulse-lab.com}/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
+     -H "x-api-key: ${EFFECTIVE_PRO_WEB_KEY}"
    ```
    - La réponse peut être doublement encodée en JSON (`d = json.loads(body); d = json.loads(d) if isinstance(d, str) else d`).
    - Le listing étant plafonné (`limit` max `1000`, `500` par défaut, paramètre `skip` ignoré), si le résultat atteint `>= 1000` entrées, vérifier également l'existence de la clé via `curl -sI "https://${DOMAIN_NAME}/${KEY}"` (sur `STATIC` hors `/`, `200`/`301`/`302` = clé occupée, `404`/`500` sans slash final suggère absente en vérifiant aussi `<key>/index.html` si historique ; sur `BLOG`/`PREMIUM`, seul `404` = libre et `500` = erreur serveur → STOP).
@@ -155,8 +164,8 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 3. **Étape 1/3 API — Obtention de l'URL signée S3 (`partnerId` numérique obligatoire)** :
    ```bash
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/signed-url" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+   curl -sS -X POST "${PRO_WEB_PUBLIC_API_URL:-https://api-pro-web.propulse-lab.com}/objects/signed-url" \
+     -H "x-api-key: ${EFFECTIVE_PRO_WEB_KEY}" \
      -H "Content-Type: application/json" \
      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
@@ -177,8 +186,8 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 5. **Étape 3/3 API — Enregistrement en base & invalidation (`upsert`)** :
    ```bash
-   curl -sS -X POST "https://api-pro-web.propulse-lab.com/objects/upsert" \
-     -H "x-api-key: ${PRO_WEB_API_KEY}" \
+   curl -sS -X POST "${PRO_WEB_PUBLIC_API_URL:-https://api-pro-web.propulse-lab.com}/objects/upsert" \
+     -H "x-api-key: ${EFFECTIVE_PRO_WEB_KEY}" \
      -H "Content-Type: application/json" \
      -d '{
        "websiteId": "'"${WEBSITE_ID}"'",
@@ -203,8 +212,8 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
 
 ### Action B — Lister ou inspecter les objets d'un site
 ```bash
-curl -sS "https://api-pro-web.propulse-lab.com/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
-  -H "x-api-key: ${PRO_WEB_API_KEY}"
+curl -sS "${PRO_WEB_PUBLIC_API_URL:-https://api-pro-web.propulse-lab.com}/objects/list/${WEBSITE_ID}?partnerId=${PARTNER_ID}&limit=1000" \
+  -H "x-api-key: ${EFFECTIVE_PRO_WEB_KEY}"
 ```
 *(Décoder de manière sûre : `d = json.loads(body); d = json.loads(d) if isinstance(d, str) else d`).*
 
@@ -232,29 +241,58 @@ Quand un projet comporte plusieurs pages HTML liées (ex. `index.html`, `carte.h
 ### Action E — Pattern Blog Vibecodé (Consommation de `articles.json` & `/articles/<slug>.json`)
 Quand l'utilisateur souhaite créer ou vibecoder un blog, un flux d'actualités ou une section dépêches/daily sur un site Pro Web :
 1. **Source de Vérité des Articles (`Atomic OS`)** :
-   - Les articles sont automatiquement publiés par la brique `/pro-daily` sous forme de fichiers statiques déposés sur le bucket S3 du site :
-     - **Index global** : `https://${DOMAIN_NAME}/articles.json` (liste ordonnée, extraits, dates, auteurs, tags, URLs).
-     - **Fiche unitaire** : `https://${DOMAIN_NAME}/articles/<slug>.json` (corps HTML complet `content_html`, CTA, mentions).
-     - **Page HTML statique** : `https://${DOMAIN_NAME}/articles/<slug>/index.html` (générée automatiquement pour le SEO).
-2. **Contrat d'intégration Frontend (KISS Vanilla JS)** :
-   - Pour afficher la liste/grille d'articles sur la page d'accueil ou la page `/blog` :
+   - Les articles sont automatiquement publiés par la brique `/pro-daily` sous forme d'objets statiques déposés sur le bucket S3 du site :
+     - **Index global** : `https://${DOMAIN_NAME}/articles.json` (liste ordonnée, extraits, dates, auteurs, tags, `html_url` sans slash final).
+     - **Fiche unitaire** : `https://${DOMAIN_NAME}/articles/<slug>.json` (corps HTML assaini `content_html`, CTA, mentions).
+     - **Page HTML statique** : `https://${DOMAIN_NAME}/<cleanHtmlKey>` (clé propre **sans slash final ni `/index.html`**, ex. `/<slug>` ou `/articles/<slug>` selon `articles_dir`, générée automatiquement pour le SEO/OpenGraph).
+2. **Contrat d'intégration Frontend sécurisé (DOM API sans XSS + Tokens DTCG `@layer theme`)** :
+   - Déclarer les jetons du blog dans `@layer theme` à partir de `donnees-business/design-system.md` du partenaire (contraste WCAG AA $\ge 4.5:1$, zéro couleur en dur hors `@layer theme`) :
+     ```css
+     @layer theme {
+       :root {
+         --blog-surface: var(--color-surface, #ffffff);
+         --blog-border: var(--color-border, #e5e7eb);
+         --blog-text: var(--color-text, #111827);
+         --blog-muted: var(--color-text-muted, #4b5563);
+         --blog-primary: var(--color-primary, #111827);
+       }
+     }
+     ```
+   - Afficher la grille d'articles via construction DOM pure (`createElement` + `textContent` + validation d'URL `safeUrl` — **ne jamais interpoler `innerHTML`**) :
      ```javascript
+     const safeUrl = (u) => (typeof u === 'string' && (/^\/[a-zA-Z0-9]/.test(u) || u.startsWith('https://'))) ? u : '#';
      fetch('/articles.json')
-       .then(r => r.json())
-       .then(data => {
-         const container = document.getElementById('articles-grid');
-         if (!container || !data.articles) return;
-         container.innerHTML = data.articles.map(art => `
-           <article class="border border-stone-200 rounded-xl p-6 bg-white hover:shadow-md transition">
-             ${art.featured_image ? `<img src="${art.featured_image}" alt="${art.title}" class="rounded-lg mb-4 w-full h-48 object-cover">` : ''}
-             <div class="text-xs text-stone-500 mb-2">${art.date_formatted} &bull; ${art.reading_time_minutes} min</div>
-             <h3 class="text-xl font-bold mb-3"><a href="${art.html_url}" class="hover:underline">${art.title}</a></h3>
-             <p class="text-stone-600 text-sm mb-4 line-clamp-3">${art.excerpt}</p>
-             <a href="${art.html_url}" class="text-sm font-semibold text-blue-600 hover:underline">Lire la suite &rarr;</a>
-           </article>
-         `).join('');
+       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+       .then((data) => {
+         const grid = document.getElementById('articles-grid');
+         if (!grid || !Array.isArray(data.articles)) return;
+         grid.replaceChildren(...data.articles.map((art) => {
+           const card = document.createElement('article');
+           card.style.cssText = 'background:var(--blog-surface);border:1px solid var(--blog-border);color:var(--blog-text);border-radius:0.75rem;padding:1.5rem;';
+           if (art.featured_image && safeUrl(art.featured_image) !== '#') {
+             const img = document.createElement('img');
+             img.src = safeUrl(art.featured_image);
+             img.alt = String(art.title || '');
+             img.loading = 'lazy';
+             card.appendChild(img);
+           }
+           const meta = document.createElement('div');
+           meta.style.color = 'var(--blog-muted)';
+           meta.textContent = `${art.date_formatted || art.date || ''} • ${Number(art.reading_time_minutes) || 1} min`;
+           const h3 = document.createElement('h3');
+           const link = document.createElement('a');
+           link.href = safeUrl(art.html_url);
+           link.style.color = 'var(--blog-primary)';
+           link.textContent = String(art.title || '');
+           h3.appendChild(link);
+           const p = document.createElement('p');
+           p.style.color = 'var(--blog-muted)';
+           p.textContent = String(art.excerpt || '');
+           card.append(meta, h3, p);
+           return card;
+         }));
        })
-       .catch(err => console.error('Erreur chargement articles.json:', err));
+       .catch((err) => console.error('Erreur chargement articles.json:', err));
      ```
 3. **Zéro CMS requis** : ne jamais proposer de déployer WordPress ou une base de données MySQL pour un simple blog sur un site vitrine Pro Web. Utiliser exclusivement ce standard `articles.json` alimenté par `/pro-daily`.
 

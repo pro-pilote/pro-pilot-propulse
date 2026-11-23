@@ -2,19 +2,19 @@
   "schema": 1,
   "skills": {
     "pro-web": {
-      "version": "2.1.2",
+      "version": "2.1.3",
       "status": "stable",
       "path": "skills/pro-web/SKILL.md",
       "summary": "Créer, retoucher, prévisualiser et publier des pages HTML et documents Pro Web"
     },
     "learn": {
-      "version": "2.2.0",
+      "version": "2.2.1",
       "status": "stable",
       "path": "skills/learn/SKILL.md",
       "summary": "Apprentissage continu de règles métier et bilan rétrospectif de session dans l'inbox GitHub"
     },
     "fin": {
-      "version": "2.2.0",
+      "version": "2.2.1",
       "status": "stable",
       "path": "skills/learn/SKILL.md",
       "summary": "Alias rétrocompatible de /learn pour la clôture et l'enregistrement de règles"
