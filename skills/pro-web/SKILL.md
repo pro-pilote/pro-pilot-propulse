@@ -1,6 +1,6 @@
 ---
 name: pro-web
-version: "2.1.5"
+version: "2.1.6"
 description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle et lecture live du depot partenaire sur GitHub.
 ---
 
@@ -21,7 +21,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-web"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.1.5"
+CURRENT_VERSION = "2.1.6"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -333,3 +333,12 @@ Quand l'utilisateur souhaite créer ou vibecoder un blog, un flux d'actualités 
 1. **Suppression non autorisée en v1** : aucune route `DELETE` n'est ouverte sur l'API publique ; toute suppression définitive s'effectue manuellement sur l'interface web Pro Web.
 2. **Sécurité des secrets** : ne jamais afficher `PRO_WEB_API_KEY` ni `PRO_PILOT_WRITE_TOKEN` en clair.
 3. **Apprentissage continu** : dès que l'utilisateur formule une correction, une préférence graphique ou une nouvelle règle (ou en clôture via `/learn`), l'appliquer immédiatement puis proposer de l'enregistrer via la skill `/learn` (`POST https://pro-pilot.propulse-lab.com/api/feedback` $\rightarrow$ `donnees-business/_inbox/`).
+4. **Quotas horaires anti-boucle & Escalade Superuser (`HTTP 429`)** :
+   - Le palier standard autorise **160 nouveaux objets uploadés/h** et **30 objets existants distincts mis à jour/h** (retoucher plusieurs fois la même page dans l'heure ne compte que pour 1 objet).
+   - **Règle absolue en cas de `HTTP 429` (`actor_object_budget_exceeded`)** : **arrêter immédiatement tout envoi** (3 refus consécutifs suspendent automatiquement le jeton). Expliquer sobrement le plafond atteint à l'utilisateur et, s'il réalise un import massif légitime, lui proposer de transmettre une demande d'escalade **Superuser (`1 000 uploads/h + 1 000 updates/h`)** aux administrateurs sur Slack :
+     ```bash
+     curl -fsS -m 15 -X POST "https://pro-pilot.propulse-lab.com/api/quota-upgrade-request" \
+       -H "Authorization: Bearer ${PRO_PILOT_WRITE_TOKEN}" \
+       -H "Content-Type: application/json" \
+       -d '{"reason": "Description courte du besoin d import massif"}'
+     ```
