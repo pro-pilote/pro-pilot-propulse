@@ -1,6 +1,6 @@
 ---
 name: learn
-version: "2.2.3"
+version: "2.2.4"
 description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot.
 ---
 
@@ -22,7 +22,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "learn"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.2.3"
+CURRENT_VERSION = "2.2.4"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -50,6 +50,7 @@ try:
         try:
             with open(env_file, encoding="utf-8") as f:
                 env_raw = f.read()
+            cur_tok, cur_api_key, cur_api_url = "", None, ""
             for line in env_raw.splitlines():
                 s = line.strip()
                 if s.startswith("PARTNER_ID="):
@@ -57,21 +58,46 @@ try:
                     local_pid = int(val) if val.isdigit() else None
                 elif s.startswith("PRO_PILOT_WRITE_TOKEN="):
                     cur_tok = s.split("=", 1)[1].strip().strip('"').strip("'")
-                    if "." in cur_tok:
-                        b64 = cur_tok.split(".", 1)[0]
-                        b64 += "=" * ((4 - len(b64) % 4) % 4)
-                        claims = json.loads(base64.urlsafe_b64decode(b64).decode("utf-8"))
-                        if int(claims.get("iat") or 0) < 1795446900:
-                            m_req = urllib.request.Request("https://pro-pilot.propulse-lab.com/api/token/migrate", data=b"{}", headers={"Authorization": f"Bearer {cur_tok}", "Content-Type": "application/json", "User-Agent": "Pro-Pilot-CLI/2.2"}, method="POST")
-                            with urllib.request.urlopen(m_req, timeout=4) as m_resp:
-                                m_data = json.loads(m_resp.read().decode("utf-8"))
-                            new_tok = str(m_data.get("writeToken") or "").strip()
-                            if m_data.get("ok") and "." in new_tok:
-                                tmp_env = env_file + ".migrate.tmp"
-                                fd = os.open(tmp_env, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                                with os.fdopen(fd, "w", encoding="utf-8") as tf:
-                                    tf.write(env_raw.replace(cur_tok, new_tok, 1))
-                                os.replace(tmp_env, env_file)
+                elif s.startswith("PRO_WEB_API_KEY="):
+                    cur_api_key = s.split("=", 1)[1].strip().strip('"').strip("'")
+                elif s.startswith("PRO_WEB_PUBLIC_API_URL="):
+                    cur_api_url = s.split("=", 1)[1].strip().strip('"').strip("'")
+            eff_tok, claims = cur_tok, {}
+            if "." in cur_tok:
+                b64 = cur_tok.split(".", 1)[0]
+                b64 += "=" * ((4 - len(b64) % 4) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(b64).decode("utf-8"))
+                if int(claims.get("iat") or 0) < 1795446900:
+                    m_req = urllib.request.Request("https://pro-pilot.propulse-lab.com/api/token/migrate", data=b"{}", headers={"Authorization": f"Bearer {cur_tok}", "Content-Type": "application/json", "User-Agent": "Pro-Pilot-CLI/2.2"}, method="POST")
+                    with urllib.request.urlopen(m_req, timeout=4) as m_resp:
+                        m_data = json.loads(m_resp.read().decode("utf-8"))
+                    cand = str(m_data.get("writeToken") or "").strip()
+                    if m_data.get("ok") and "." in cand:
+                        eff_tok = cand
+            is_multi = bool(claims.get("is_multi") or str(claims.get("pid") or "") == "multi")
+            broker_url = "https://pro-pilot.propulse-lab.com/api/pro-web"
+            need_broker = bool(eff_tok) and (cur_api_key is not None or is_multi) and (cur_api_url != broker_url or cur_api_key != eff_tok)
+            if eff_tok != cur_tok or need_broker:
+                out_lines, seen_url, seen_key = [], False, False
+                for line in env_raw.splitlines():
+                    s = line.strip()
+                    if s.startswith("PRO_PILOT_WRITE_TOKEN="):
+                        out_lines.append(f"PRO_PILOT_WRITE_TOKEN={eff_tok}")
+                    elif need_broker and s.startswith("PRO_WEB_PUBLIC_API_URL="):
+                        out_lines.append(f"PRO_WEB_PUBLIC_API_URL={broker_url}"); seen_url = True
+                    elif need_broker and s.startswith("PRO_WEB_API_KEY="):
+                        out_lines.append(f"PRO_WEB_API_KEY={eff_tok}"); seen_key = True
+                    else:
+                        out_lines.append(line)
+                if need_broker and not seen_url:
+                    out_lines.insert(0, f"PRO_WEB_PUBLIC_API_URL={broker_url}")
+                if need_broker and not seen_key:
+                    out_lines.insert(1, f"PRO_WEB_API_KEY={eff_tok}")
+                tmp_env = env_file + ".migrate.tmp"
+                fd = os.open(tmp_env, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as tf:
+                    tf.write("\n".join(out_lines) + "\n")
+                os.replace(tmp_env, env_file)
         except Exception:
             pass
 
