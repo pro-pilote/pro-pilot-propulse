@@ -1,13 +1,13 @@
 ---
 description: Préparer et publier une newsletter quotidienne (Email SFMC + Article Blog)
-allowed-tools: Bash(curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/*)
+allowed-tools: Bash(curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/wip/pro-daily/skills/*)
 ---
 
 # /pro-daily — Chargeur Dynamique Pro-Pilot (Non exposé aux partenaires)
 
-Instructions officielles chargées en direct depuis `main` :
+Instructions officielles chargées en direct depuis la branche `wip/pro-daily` :
 
-!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-daily/SKILL.md`
+!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/wip/pro-daily/skills/pro-daily/SKILL.md`
 
 ---
 
