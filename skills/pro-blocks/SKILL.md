@@ -79,7 +79,7 @@ try:
                         eff_tok = cand
             is_multi = bool(claims.get("is_multi") or str(claims.get("pid") or "") == "multi")
             broker_url = "https://pro-pilot.propulse-lab.com/api/pro-web"
-            need_broker = bool(eff_tok) and (cur_api_key is not None or is_multi) and (cur_api_url != broker_url or cur_api_key != eff_tok)
+            need_broker = bool(eff_tok) and (cur_api_key is not None or is_multi or local_pid in (10, 20)) and (cur_api_url != broker_url or cur_api_key != eff_tok)
             if eff_tok != cur_tok or need_broker:
                 out_lines, seen_url, seen_key = [], False, False
                 for line in env_raw.splitlines():
