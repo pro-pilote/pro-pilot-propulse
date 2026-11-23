@@ -6,12 +6,13 @@ Socle public central des **Skills** et des règles d'exécution Pro-Pilot pour a
 
 ```text
 pro-pilot-propulse/
-├── VERSION                                # Version courante du socle (2.0.0)
+├── VERSION                                # Version courante du socle
 ├── README.md                              # Présentation du socle
 ├── ROUTER.md                              # Routeur d'actions IA (point d'entrée live)
 ├── regles/                                # Règles transverses d'exécution IA
 │   ├── README.md                          # Index des règles
 │   ├── glossaire.md                       # Terminologie métier unifiée (LP, STATIC, GTM, BU)
+│   ├── infrastructure-hebergement.md      # Infra AWS eu-west-1 & mentions légales hébergeur
 │   ├── clarification.md                   # Zéro invention : poser les questions si données manquantes
 │   ├── garde-fous.md                      # Preview locale + validation humaine avant appel API
 │   └── amelioration-continue-letta.md     # Boucle de feedback partenaire append-only (_inbox)

@@ -19,35 +19,54 @@ python3 - <<'PY'
 import json, os, urllib.request
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
+LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "learn"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
 CURRENT_VERSION = "2.2.1"
+LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
+    # 1. Migration automatique vers le chargeur dynamique si copie statique ou ancien lanceur
+    local_content = open(LOCAL_PATH, encoding="utf-8").read() if os.path.exists(LOCAL_PATH) else ""
+    if os.path.exists(LOCAL_PATH) and LIVE_MARKER not in local_content:
+        loader_url = f"{LOADER_BASE}/{SKILL_NAME}.md"
+        with urllib.request.urlopen(urllib.request.Request(loader_url, headers={"User-Agent": "Pro-Pilot-CLI/2.2"}), timeout=2) as l_resp:
+            new_loader = l_resp.read().decode("utf-8")
+        if LIVE_MARKER in new_loader:
+            tmp_path = f"{LOCAL_PATH}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                f.write(new_loader)
+            os.replace(tmp_path, LOCAL_PATH)
+            print(f"[PRO_PILOT_UPDATE] Lanceur /{SKILL_NAME} migré vers le chargeur dynamique live (v{CURRENT_VERSION}).")
+
+    # 2. Détection de nouveaux skills disponibles (stables ou scoped éligibles au partenaire)
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
     with urllib.request.urlopen(req, timeout=2) as resp:
         manifest = json.loads(resp.read().decode("utf-8"))
 
-    # 1. Vérification auto-MAJ du skill courant
-    remote_skill = manifest.get("skills", {}).get(SKILL_NAME, {})
-    remote_ver = remote_skill.get("version", CURRENT_VERSION)
-    if remote_ver != CURRENT_VERSION and remote_skill.get("path"):
-        skill_url = f"https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/{remote_skill['path']}"
-        with urllib.request.urlopen(urllib.request.Request(skill_url, headers={"User-Agent": "Pro-Pilot-CLI/2.2"}), timeout=2) as s_resp:
-            new_code = s_resp.read().decode("utf-8")
-        if new_code.strip():
-            tmp_path = f"{LOCAL_PATH}.tmp"
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                f.write(new_code)
-            os.replace(tmp_path, LOCAL_PATH)
-            print(f"[PRO_PILOT_UPDATE] Skill /{SKILL_NAME} mis à jour automatiquement vers v{remote_ver}.")
+    local_pid = None
+    env_file = "." + "env"
+    if os.path.exists(env_file):
+        try:
+            with open(env_file, encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("PARTNER_ID="):
+                        val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        local_pid = int(val) if val.isdigit() else None
+        except Exception:
+            pass
 
-    # 2. Détection de nouveaux skills stables disponibles
     for name, data in manifest.get("skills", {}).items():
-        if data.get("status") == "stable":
+        is_scoped_ok = (data.get("status") == "partner_scoped" and local_pid in data.get("eligible_partner_ids", []))
+        if data.get("status") == "stable" or is_scoped_ok:
             target_cmd = f".claude/commands/{name}.md"
             if not os.path.exists(target_cmd):
-                print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')}")
+                print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
+
+    # 3. Signalement des anciens lanceurs dépréciés
+    for old_cmd in ("fin", "feedback"):
+        if os.path.exists(f".claude/commands/{old_cmd}.md"):
+            print(f"[PRO_PILOT_DEPRECATED] .claude/commands/{old_cmd}.md est obsolète (remplacé par /learn) et peut être supprimé.")
 except Exception:
     pass
 PY

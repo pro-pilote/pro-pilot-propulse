@@ -1,5 +1,6 @@
 ---
 name: pro-daily
+version: "0.9.0"
 description: Preparation, Studio visuel 2 etapes scelle SHA-256 et publication coordonnee d'un Daily dans Salesforce Marketing Cloud et sur Blog WordPress ou Site Statique Pro Web.
 ---
 
