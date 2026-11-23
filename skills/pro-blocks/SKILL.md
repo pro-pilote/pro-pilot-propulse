@@ -114,7 +114,7 @@ Avant toute opération :
      1. **🎨 1. Branding & Identité Visuelle** : Mettre à jour le logo, le favicon, la couleur d'accent (`--brand-*`) ou les couleurs de la barre latérale (`--rail-*`).
      2. **🧭 2. Navigation & Onglets** : Consulter l'arborescence des rubriques abonnés, réordonner les onglets, masquer ou ajouter une page.
      3. **🧩 3. Blocs d'Accueil & Contenus** : Ajouter, modifier ou réorganiser les blocs de la page d'accueil (vidéos à la une, callouts de réassurance, carrousels, liens rapides).
-4. **Résolution de l'Application Password WordPress & Diagnostic WAF `pro-ips`** (identique à `/pro-daily`) :
+4. **Résolution de l'Application Password WordPress & Diagnostic WAF `pro-ips`** :
    - Pour un site cible (`SITE_SLUG`, `SITE_UPPER` en majuscules ex. `CRY`, `DOMAIN`, `SITE_PARTNER_ID`), résoudre les identifiants Application Password par ordre de priorité strict :
      1. `WP_APP_USER_<SITE_UPPER>` / `WP_APP_PASSWORD_<SITE_UPPER>` dans `.env` ;
      2. `WP_APP_USER` / `WP_APP_PASSWORD` dans `.env` (**uniquement** si `PARTNER_ID` dans `.env` est égal à `site.partnerId` — cloisonnement fail-closed) ;

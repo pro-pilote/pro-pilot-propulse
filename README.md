@@ -21,14 +21,11 @@ pro-pilot-propulse/
     ├── _loaders/                          # Lanceurs légers installés sur le poste client
     │   ├── pro-web.md                     # Chargeur live /pro-web
     │   ├── pro-blocks.md                  # Chargeur live /pro-blocks
-    │   ├── pro-daily.md                   # Chargeur live /pro-daily (interne)
     │   └── learn.md                       # Chargeur live /learn
     ├── pro-web/
     │   └── SKILL.md                       # Création, retouche et publication d'objets Pro Web
     ├── pro-blocks/
     │   └── SKILL.md                       # Blocs et configuration des espaces membres
-    ├── pro-daily/
-    │   └── SKILL.md                       # Studio 2 étapes Email SFMC + Article Blog/Static (Interne WIP)
     └── learn/
         └── SKILL.md                       # Apprentissage continu et bilan rétrospectif vers donnees-business/_inbox/
 ```

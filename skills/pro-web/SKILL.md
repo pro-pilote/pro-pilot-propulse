@@ -267,7 +267,7 @@ Quand un projet comporte plusieurs pages HTML liées (ex. `index.html`, `carte.h
 ### Action E — Pattern Blog Vibecodé (Consommation de `articles.json` & `/articles/<slug>.json`)
 Quand l'utilisateur souhaite créer ou vibecoder un blog, un flux d'actualités ou une section dépêches/daily sur un site Pro Web :
 1. **Source de Vérité des Articles (`Atomic OS`)** :
-   - Les articles sont automatiquement publiés par la brique `/pro-daily` sous forme d'objets statiques déposés sur le bucket S3 du site :
+   - Les articles sont automatiquement publiés par le pipeline éditorial sous forme d'objets statiques déposés sur le bucket S3 du site :
      - **Index global** : `https://${DOMAIN_NAME}/articles.json` (liste ordonnée, extraits, dates, auteurs, tags, `html_url` sans slash final).
      - **Fiche unitaire** : `https://${DOMAIN_NAME}/articles/<slug>.json` (corps HTML assaini `content_html`, CTA, mentions).
      - **Page HTML statique** : `https://${DOMAIN_NAME}/<cleanHtmlKey>` (clé propre **sans slash final ni `/index.html`**, ex. `/<slug>` ou `/articles/<slug>` selon `articles_dir`, générée automatiquement pour le SEO/OpenGraph).
@@ -320,7 +320,7 @@ Quand l'utilisateur souhaite créer ou vibecoder un blog, un flux d'actualités 
        })
        .catch((err) => console.error('Erreur chargement articles.json:', err));
      ```
-3. **Zéro CMS requis** : ne jamais proposer de déployer WordPress ou une base de données MySQL pour un simple blog sur un site vitrine Pro Web. Utiliser exclusivement ce standard `articles.json` alimenté par `/pro-daily`.
+3. **Zéro CMS requis** : ne jamais proposer de déployer WordPress ou une base de données MySQL pour un simple blog sur un site vitrine Pro Web. Utiliser exclusivement ce standard `articles.json` alimenté par le pipeline éditorial.
 
 ---
 
