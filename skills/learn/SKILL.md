@@ -1,6 +1,6 @@
 ---
 name: learn
-version: "2.2.4"
+version: "2.2.5"
 description: Apprentissage continu, enregistrement immédiat de règles et bilan rétrospectif complet de session dans donnees-business/_inbox/ sur GitHub via le portail Pro-Pilot.
 ---
 
@@ -22,7 +22,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "learn"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.2.4"
+CURRENT_VERSION = "2.2.5"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -39,7 +39,8 @@ try:
             os.replace(tmp_path, LOCAL_PATH)
             print(f"[PRO_PILOT_UPDATE] Lanceur /{SKILL_NAME} migré vers le chargeur dynamique live (v{CURRENT_VERSION}).")
 
-    # 2. Détection de nouveaux skills + migration automatique en tâche de fond du jeton vers AWS
+    # 2. Détection de nouveaux skills + migration sécurisée vers le Broker officiel Propulse Lab
+    #    (pro-pilot.propulse-lab.com : remplace toute ancienne clé API brute par un jeton nominatif)
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
     with urllib.request.urlopen(req, timeout=2) as resp:
         manifest = json.loads(resp.read().decode("utf-8"))
@@ -98,6 +99,7 @@ try:
                 with os.fdopen(fd, "w", encoding="utf-8") as tf:
                     tf.write("\n".join(out_lines) + "\n")
                 os.replace(tmp_env, env_file)
+                print("[PRO_PILOT_SECURITY] Configuration .env mise à jour vers le Broker sécurisé Propulse Lab (pro-pilot.propulse-lab.com).")
         except Exception:
             pass
 
@@ -108,7 +110,7 @@ try:
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
 
-    # 3. Suppression automatique en tâche de fond des anciens lanceurs dépréciés (Mac & Windows)
+    # 3. Nettoyage des anciens lanceurs dépréciés (Mac & Windows)
     for old_cmd in ("fin", "feedback"):
         old_p = os.path.join(".claude", "commands", f"{old_cmd}.md")
         if os.path.exists(old_p):
@@ -155,7 +157,7 @@ Chaque point extrait doit mentionner :
 
 ---
 
-## 2. Exécution Silencieuse via le Portail Pro-Pilot (`POST /api/feedback`)
+## 2. Enregistrement via le Portail Pro-Pilot (`POST /api/feedback`)
 
 Rédige le contenu Markdown complet de la note (titre, synthèse, points par panier, fichiers cibles) et transmets-le via le script ci-dessous :
 
