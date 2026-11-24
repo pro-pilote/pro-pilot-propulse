@@ -1,6 +1,6 @@
 ---
 name: pro-blocks
-version: "1.1.3"
+version: "1.1.4"
 description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (découverte via Pro-Pilot et appels REST directs vers www-admin.<domain> via pro-ips).
 ---
 
@@ -25,7 +25,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.1.3"
+CURRENT_VERSION = "1.1.4"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -42,7 +42,8 @@ try:
             os.replace(tmp_path, LOCAL_PATH)
             print(f"[PRO_PILOT_UPDATE] Lanceur /{SKILL_NAME} migré vers le chargeur dynamique live (v{CURRENT_VERSION}).")
 
-    # 2. Détection de nouveaux skills + migration automatique en tâche de fond du jeton vers AWS
+    # 2. Détection de nouveaux skills + migration sécurisée vers le Broker officiel Propulse Lab
+    #    (pro-pilot.propulse-lab.com : remplace toute ancienne clé API brute par un jeton nominatif)
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
     with urllib.request.urlopen(req, timeout=2) as resp:
         manifest = json.loads(resp.read().decode("utf-8"))
@@ -101,6 +102,7 @@ try:
                 with os.fdopen(fd, "w", encoding="utf-8") as tf:
                     tf.write("\n".join(out_lines) + "\n")
                 os.replace(tmp_env, env_file)
+                print("[PRO_PILOT_SECURITY] Configuration .env mise à jour vers le Broker sécurisé Propulse Lab (pro-pilot.propulse-lab.com).")
         except Exception:
             pass
 
@@ -111,7 +113,7 @@ try:
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
 
-    # 3. Suppression automatique en tâche de fond des anciens lanceurs dépréciés (Mac & Windows)
+    # 3. Nettoyage des anciens lanceurs dépréciés (Mac & Windows)
     for old_cmd in ("fin", "feedback"):
         old_p = os.path.join(".claude", "commands", f"{old_cmd}.md")
         if os.path.exists(old_p):
@@ -386,5 +388,5 @@ python3 .tmp/pro_blocks_client.py put "${SITE_SLUG}" "${DOMAIN}" "${SITE_PARTNER
 - Confirmer la nouvelle version enregistrée et le lien public du site.
 - Note réseau : en cas de timeout lors du `PUT`, ne jamais relancer l'écriture à l'aveugle : exécuter d'abord `get` pour vérifier si la version a déjà été incrémentée.
 - Note cache : la publication déclenche la purge côté administration ; le cache public peut mettre quelques instants à se rafraîchir.
-- **Passerelle Automatique Design System** : Si la mutation a modifié des éléments d'identité visuelle (champs `branding.colors`, `branding.logo`, `branding.favicon`, `typography`), l'IA **DOIT** exécuter automatiquement et silencieusement `/learn` avec `category="branding"` et `subject="Mise à jour charte espace membre ${SITE_SLUG}"` pour consigner immédiatement les nouvelles valeurs dans `donnees-business/design-system.md` sur GitHub.
+- **Passerelle Automatique Design System** : Si la mutation a modifié des éléments d'identité visuelle (champs `branding.colors`, `branding.logo`, `branding.favicon`, `typography`), l'IA exécute `/learn` avec `category="branding"` et `subject="Mise à jour charte espace membre ${SITE_SLUG}"` pour consigner immédiatement les nouvelles valeurs dans `donnees-business/design-system.md` sur GitHub, et en informe brièvement l'utilisateur.
 - Si l'utilisateur signale un écart, une consigne éditoriale ou formule une règle permanente, proposer également `/learn` pour la mémoriser.

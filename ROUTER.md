@@ -4,16 +4,16 @@
 
 Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
 
-1. **Auto-découverte silencieuse de l'environnement (`Project-Aware Context`)** :
+1. **Découverte de l'environnement (`Project-Aware Context`)** :
    - Charger la configuration locale : vérifier la présence du fichier `.env` dans le dossier courant. Si `.env` est absent, vérifier s'il existe dans un sous-dossier `pro-pilot-*/.env` (l'utilisateur a probablement ouvert le dossier parent) et le guider sobrement pour ouvrir ce sous-dossier dans son IA.
    - **Validation non-régressive du `.env` (tous modes : mono, mutualisé `others`, sans clé Pro Web dédiée, `multi`)** :
      - Le `.env` est **valide** dès lors que `PRO_PILOT_WRITE_TOKEN` est renseigné (en mode `multi` ou pour une organisation sans clé Pro Web dédiée comme Biovancia/Cilumine/NutraZenith, l'absence de `PRO_WEB_API_KEY` dans `.env` est normale).
      - En mode `multi`, pour publier sur Pro Web S3, utiliser `PRO_WEB_API_KEY` (si défini dans `.env`) sinon la variable d'environnement du poste `PRO_WEB_API_KEY_<PARTNER_ID>` (ou `PRO_WEB_API_KEY_9` pour les entités mutualisées `6, 8, 9, 13, 16, 18, 19, 22`).
      - Uniquement si `.env` est introuvable, si `PRO_PILOT_WRITE_TOKEN` est vide, ou si un appel au portail (`/api/repo`, `/api/feedback`, `/api/ai-child/sites`) renvoie **`HTTP 401`** (jeton expiré ou rotation de sécurité du portail), **ne jamais demander de clé ou jeton à la main** : inviter simplement l'utilisateur à se reconnecter une fois sur `https://pro-pilot.propulse-lab.com/` pour actualiser son espace (le lien est à usage unique).
-   - Exécuter automatiquement en tâche de fond le snippet Python d'Étape 0 de `skills/pro-web/SKILL.md` (contrôle de `skills/manifest.json` + migration automatique en tâche de fond de tout ancien `PRO_PILOT_WRITE_TOKEN` vers la signature AWS, sans aucune action utilisateur).
+   - Exécuter le snippet Python d'Étape 0 de `skills/pro-web/SKILL.md` (vérification de `skills/manifest.json` et bascule sécurisée de tout ancien jeton ou clé brute vers le Broker officiel `pro-pilot.propulse-lab.com`).
    - **Mode Multi-Partenaires (`PARTNER_SLUG` absent ou `pid: "multi"`) — Séquençage strict en deux tours** :
      - **Tour 1** : Demander poliment à l'utilisateur sur quelle organisation travailler aujourd'hui (ex. Éditions Biosanté, Éditions VivaSanté, Optima Santé, Panthéon Recherche, Propulse Lab...). *Ne pas inspecter les actifs avant d'avoir reçu ce choix.*
-     - **Tour 2 (dès confirmation du choix)** : Résoudre le slug et l'identifiant du partenaire choisi, puis exécuter l'inspection silencieuse ci-dessous.
+     - **Tour 2 (dès confirmation du choix)** : Résoudre le slug et l'identifiant du partenaire choisi, puis consulter ses actifs en lecture seule ci-dessous.
    - **Mode Mono-Partenaire ou organisation résolue** :
      - Résoudre le **nom officiel de l'organisation** depuis `$PARTNER_NAME` (dans `.env`) ou depuis les fichiers du dépôt, et l'utiliser directement partout dans vos messages (ne jamais écrire « votre marque » ni le mot générique « votre organisation » dès lors que le nom réel est connu, ex. **Éditions Biosanté**).
      - **Cas spécifique de Propulse Lab (`partnerId: 9`)** : En tant qu'organisation d'infrastructure/holding technique, Propulse Lab ne dispose pas de catalogue de publications éditoriales (`donnees-business/`), mais de sites documentaires et d'outils (`doc.propulse-lab.com`, `tools.propulse-lab.com`, `www.propulse-lab.com`). L'inspection s'oriente directement sur l'inventaire des sites vitrines actifs.
@@ -21,7 +21,7 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
        1. `donnees-business/design-system.md` (charte, couleurs, polices)
        2. `skills/pro-web/variables.md` (domaines et identifiants de sites actifs)
        3. `donnees-business` (listing des produits disponibles)
-   - *Règle absolue Zéro Jargon* : ne jamais afficher de tokens, lignes brutes de `.env`, chemins techniques `.claude/` ou commandes shell dans la réponse utilisateur.
+   - *Règle Clarté & Sécurité des secrets* : ne jamais exposer de tokens ni de secrets bruts de `.env` dans vos réponses ; présenter le résultat en français clair sans jargon technique inutile (tout en restant transparent sur les actions effectuées si l'utilisateur demande le détail).
 
 2. **Restitution "Aha! Moment" & Proposition Guidée de la Toute Première Page** :
    - Saluer chaleureusement en nommant directement l'organisation (ex. **Éditions Biosanté**) et résumer en 2-3 puces claires ce qui est déjà prêt :
@@ -102,8 +102,8 @@ Ne jamais s'appuyer sur des copies locales figées :
 
 ## Étape 3 — Interaction, Aperçu Local & Validation Humaine
 
-1. **Si une donnée essentielle manque** (ou contient `[À COMPLÉTER]`) : poser 1 à 3 questions précises avant de générer (rappel : l'identifiant GTM est déjà **prérempli** dans `skills/pro-web/variables.md` et ne doit jamais être demandé à l'utilisateur ; le leadcode d'opt-in se crée sur **Pro Acquisitions** `https://pro-acquisitions.propulse-lab.com` — zéro mention de Salesforce).
-2. **Si toutes les données sont réunies** : générer le fichier HTML complet (`<!DOCTYPE html>` à `</html>`, UTF-8) dans `.tmp/`, faire valider l'aperçu par l'utilisateur et demander confirmation explicite (`domaine`, `websiteId`, `key`) avant tout appel d'écriture sur `https://api-pro-web.propulse-lab.com`.
+1. **Si une donnée essentielle manque** (ou contient `[À COMPLÉTER]`) : poser 1 à 3 questions précises avant de générer (rappel : l'identifiant GTM du partenaire est déjà configuré dans `skills/pro-web/variables.md` — le préremplir automatiquement et le mentionner dans le récapitulatif avant validation ; le leadcode d'opt-in se crée sur **Pro Acquisitions** `https://pro-acquisitions.propulse-lab.com` — zéro mention de Salesforce).
+2. **Si toutes les données sont réunies** : générer le fichier HTML complet (`<!DOCTYPE html>` à `</html>`, UTF-8) dans `.tmp/`, faire valider l'aperçu par l'utilisateur et demander confirmation explicite (`domaine`, `websiteId`, `key`) avant tout appel d'écriture sur Pro Web (`${PRO_WEB_PUBLIC_API_URL}`).
 
 ---
 

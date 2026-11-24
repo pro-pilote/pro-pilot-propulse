@@ -1,6 +1,6 @@
 ---
 name: pro-web
-version: "2.1.7"
+version: "2.1.8"
 description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle et lecture live du depot partenaire sur GitHub.
 ---
 
@@ -21,7 +21,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-web"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.1.7"
+CURRENT_VERSION = "2.1.8"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -38,7 +38,8 @@ try:
             os.replace(tmp_path, LOCAL_PATH)
             print(f"[PRO_PILOT_UPDATE] Lanceur /{SKILL_NAME} migré vers le chargeur dynamique live (v{CURRENT_VERSION}).")
 
-    # 2. Détection de nouveaux skills + migration automatique en tâche de fond du jeton vers AWS
+    # 2. Détection de nouveaux skills + migration sécurisée vers le Broker officiel Propulse Lab
+    #    (pro-pilot.propulse-lab.com : remplace toute ancienne clé API brute par un jeton nominatif)
     req = urllib.request.Request(MANIFEST_URL, headers={"User-Agent": "Pro-Pilot-CLI/2.2"})
     with urllib.request.urlopen(req, timeout=2) as resp:
         manifest = json.loads(resp.read().decode("utf-8"))
@@ -97,6 +98,7 @@ try:
                 with os.fdopen(fd, "w", encoding="utf-8") as tf:
                     tf.write("\n".join(out_lines) + "\n")
                 os.replace(tmp_env, env_file)
+                print("[PRO_PILOT_SECURITY] Configuration .env mise à jour vers le Broker sécurisé Propulse Lab (pro-pilot.propulse-lab.com).")
         except Exception:
             pass
 
@@ -107,7 +109,7 @@ try:
             if not os.path.exists(target_cmd):
                 print(f"[PRO_PILOT_NEW_SKILL] Nouveau skill disponible : /{name} — {data.get('summary', '')} (installer {LOADER_BASE}/{name}.md)")
 
-    # 3. Suppression automatique en tâche de fond des anciens lanceurs dépréciés (Mac & Windows)
+    # 3. Nettoyage des anciens lanceurs dépréciés (Mac & Windows)
     for old_cmd in ("fin", "feedback"):
         old_p = os.path.join(".claude", "commands", f"{old_cmd}.md")
         if os.path.exists(old_p):
@@ -174,12 +176,12 @@ Toute page HTML (`PAGE`) publiée sur Pro Web doit inclure ou conserver intacts 
    <script async="" src="https://cdn.info-contenu.io/assets/preserveParamsV2.js" type="text/javascript"></script>
    ```
    Propage automatiquement `utm_*`, `leadcode`, `salescode`, `bdc`, `url2`/`bdc2`, `urlBdc`. Les liens génériques `https://secure.bdc.com` ne sont réécrits par ce script que si l'URL de visite contient `url2` et `bdc2` : préférer le lien direct du bon de commande (+ `salescode`) dès qu'il est connu.
-3. **Conteneur Google Tag Manager (`GTM-XXXXXXX`) — Préremplissage automatique SSOT** :
-   - Snippet `<script>` dans `<head>` et `<noscript>` juste après `<body>` selon l'identifiant GTM de `skills/pro-web/variables.md` (ou celui déjà présent sur la page modifiée).
-   - **GTM est prérempli** : l'identifiant GTM est documenté dans `variables.md` pour chaque site ou au niveau du partenaire. **Ne jamais demander l'identifiant GTM à l'utilisateur** : l'IA l'injecte directement et silencieusement dans le code généré.
+3. **Conteneur Google Tag Manager (`GTM-XXXXXXX`) — Préremplissage SSOT du partenaire** :
+   - Snippet `<script>` dans `<head>` et `<noscript>` juste après `<body>` selon l'identifiant GTM officiel du partenaire dans `skills/pro-web/variables.md` (ou celui déjà présent sur la page modifiée).
+   - **GTM du partenaire prérempli** : l'identifiant GTM officiel est documenté dans `variables.md` pour chaque site ou organisation. Le préremplir automatiquement dans le HTML (sans obliger l'utilisateur à le recopier) et l'indiquer clairement dans le récapitulatif avant validation (modifiable sur demande de l'utilisateur).
 4. **Formulaires d'opt-in & Pro Acquisitions (`leadBox-v1.0.0.js`)** :
    - **Création du `leadcode`** : Le partenaire crée et gère lui-même ses leadcodes de liste directement sur la plateforme **Pro Acquisitions** (`https://pro-acquisitions.propulse-lab.com`). **Ne jamais renvoyer l'utilisateur vers Salesforce ni vers une équipe CRM externe.**
-   - **Endpoint d'inscription LeadBox officiel** : `POST https://lead.<domaine-partenaire>/api/lead/signup` (documenté dans `skills/pro-web/variables.md`).
+   - **Endpoint d'inscription Pro Acquisitions officiel** : `POST https://lead.<domaine-partenaire>/api/lead/signup` (documenté dans `skills/pro-web/variables.md`).
    - **Hiérarchie d'attribution du Leadcode (Override dynamique SSOT)** :
      1. **Source prioritaire** : Le paramètre d'URL `?leadcode=...` provenant des campagnes marketing (Ads, newsletters, affiliation).
      2. **Override automatique** : Le script du formulaire lit `leadcode` dans `location.search` et **écrase systématiquement** toute valeur par défaut lors de la soumission.
