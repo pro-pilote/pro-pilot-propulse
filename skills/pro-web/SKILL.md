@@ -1,6 +1,6 @@
 ---
 name: pro-web
-version: "2.1.8"
+version: "2.1.9"
 description: Creation, retouche et publication d'objets web sur Pro Web via l'API officielle et lecture live du depot partenaire sur GitHub.
 ---
 
@@ -15,13 +15,13 @@ Cette skill standardise toutes les opérations sur l'infrastructure Pro Web (`${
 À chaque appel de `/pro-web`, exécute ce snippet Python compact borné à 2 secondes (dégradation gracieuse hors-ligne sans bloquer l'action) :
 ```bash
 python3 - <<'PY'
-import base64, json, os, urllib.request
+import base64, json, os, time, urllib.error, urllib.request
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/manifest.json"
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-web"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "2.1.8"
+CURRENT_VERSION = "2.1.9"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -50,43 +50,56 @@ try:
         try:
             with open(env_file, encoding="utf-8") as f:
                 env_raw = f.read()
-            cur_tok, cur_api_key, cur_api_url = "", None, ""
+            cur_tok, cur_api_key, cur_api_url = "", "", ""
             for line in env_raw.splitlines():
                 s = line.strip()
-                if s.startswith("PARTNER_ID="):
-                    val = s.split("=", 1)[1].strip().strip('"').strip("'")
+                sn = s[7:].strip() if s.startswith("export ") else s
+                if sn.startswith("PARTNER_ID="):
+                    val = sn.split("=", 1)[1].strip().strip('"').strip("'")
                     local_pid = int(val) if val.isdigit() else None
-                elif s.startswith("PRO_PILOT_WRITE_TOKEN="):
-                    cur_tok = s.split("=", 1)[1].strip().strip('"').strip("'")
-                elif s.startswith("PRO_WEB_API_KEY="):
-                    cur_api_key = s.split("=", 1)[1].strip().strip('"').strip("'")
-                elif s.startswith("PRO_WEB_PUBLIC_API_URL="):
-                    cur_api_url = s.split("=", 1)[1].strip().strip('"').strip("'")
+                elif sn.startswith("PRO_PILOT_WRITE_TOKEN="):
+                    cur_tok = sn.split("=", 1)[1].strip().strip('"').strip("'")
+                elif sn.startswith("PRO_WEB_API_KEY="):
+                    cur_api_key = sn.split("=", 1)[1].strip().strip('"').strip("'")
+                elif sn.startswith("PRO_WEB_PUBLIC_API_URL="):
+                    cur_api_url = sn.split("=", 1)[1].strip().strip('"').strip("'")
             eff_tok, claims = cur_tok, {}
             if "." in cur_tok:
                 b64 = cur_tok.split(".", 1)[0]
                 b64 += "=" * ((4 - len(b64) % 4) % 4)
                 claims = json.loads(base64.urlsafe_b64decode(b64).decode("utf-8"))
-                if int(claims.get("iat") or 0) < 1795446900:
-                    m_req = urllib.request.Request("https://pro-pilot.propulse-lab.com/api/token/migrate", data=b"{}", headers={"Authorization": f"Bearer {cur_tok}", "Content-Type": "application/json", "User-Agent": "Pro-Pilot-CLI/2.2"}, method="POST")
-                    with urllib.request.urlopen(m_req, timeout=4) as m_resp:
-                        m_data = json.loads(m_resp.read().decode("utf-8"))
-                    cand = str(m_data.get("writeToken") or "").strip()
-                    if m_data.get("ok") and "." in cand:
-                        eff_tok = cand
+                tok_exp = int(claims.get("exp") or 0)
+                if tok_exp and tok_exp <= int(time.time()):
+                    print("[PRO_PILOT_AUTH_EXPIRED] Votre jeton Pro-Pilot a expiré. Reconnectez-vous une fois sur https://pro-pilot.propulse-lab.com/ pour actualiser votre .env.")
+                    eff_tok = ""
+                elif int(claims.get("iat") or 0) < 1795446900:
+                    try:
+                        m_req = urllib.request.Request("https://pro-pilot.propulse-lab.com/api/token/migrate", data=b"{}", headers={"Authorization": f"Bearer {cur_tok}", "Content-Type": "application/json", "User-Agent": "Pro-Pilot-CLI/2.2"}, method="POST")
+                        with urllib.request.urlopen(m_req, timeout=4) as m_resp:
+                            m_data = json.loads(m_resp.read().decode("utf-8"))
+                        cand = str(m_data.get("writeToken") or "").strip()
+                        eff_tok = cand if (m_data.get("ok") and "." in cand) else ""
+                    except urllib.error.HTTPError as he:
+                        if he.code in (401, 403):
+                            print(f"[PRO_PILOT_AUTH_EXPIRED] Jeton Pro-Pilot refusé ou expiré (HTTP {he.code}). Reconnectez-vous une fois sur https://pro-pilot.propulse-lab.com/ pour actualiser votre .env.")
+                        eff_tok = ""
+                    except Exception:
+                        eff_tok = ""
             is_multi = bool(claims.get("is_multi") or str(claims.get("pid") or "") == "multi")
             broker_url = "https://pro-pilot.propulse-lab.com/api/pro-web"
-            need_broker = bool(eff_tok) and (cur_api_key is not None or is_multi or local_pid in (10, 20)) and (cur_api_url != broker_url or cur_api_key != eff_tok)
-            if eff_tok != cur_tok or need_broker:
+            need_broker = bool(eff_tok) and (bool(cur_api_key) or is_multi or local_pid in (10, 20)) and (cur_api_url != broker_url or cur_api_key != eff_tok)
+            if eff_tok and (eff_tok != cur_tok or need_broker):
                 out_lines, seen_url, seen_key = [], False, False
                 for line in env_raw.splitlines():
                     s = line.strip()
-                    if s.startswith("PRO_PILOT_WRITE_TOKEN="):
-                        out_lines.append(f"PRO_PILOT_WRITE_TOKEN={eff_tok}")
-                    elif need_broker and s.startswith("PRO_WEB_PUBLIC_API_URL="):
-                        out_lines.append(f"PRO_WEB_PUBLIC_API_URL={broker_url}"); seen_url = True
-                    elif need_broker and s.startswith("PRO_WEB_API_KEY="):
-                        out_lines.append(f"PRO_WEB_API_KEY={eff_tok}"); seen_key = True
+                    pref = "export " if s.startswith("export ") else ""
+                    sn = s[7:].strip() if pref else s
+                    if sn.startswith("PRO_PILOT_WRITE_TOKEN="):
+                        out_lines.append(f"{pref}PRO_PILOT_WRITE_TOKEN={eff_tok}")
+                    elif need_broker and sn.startswith("PRO_WEB_PUBLIC_API_URL="):
+                        out_lines.append(f"{pref}PRO_WEB_PUBLIC_API_URL={broker_url}"); seen_url = True
+                    elif need_broker and sn.startswith("PRO_WEB_API_KEY="):
+                        out_lines.append(f"{pref}PRO_WEB_API_KEY={eff_tok}"); seen_key = True
                     else:
                         out_lines.append(line)
                 if need_broker and not seen_url:
