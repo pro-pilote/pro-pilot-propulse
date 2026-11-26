@@ -1,7 +1,7 @@
 ---
 name: pro-blocks
-version: "1.1.4"
-description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (découverte via Pro-Pilot et appels REST directs vers www-admin.<domain> via pro-ips).
+version: "1.2.0"
+description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (Broker Pro-Pilot principal via PRO_PILOT_WRITE_TOKEN, avec repli direct www-admin.<domain> via pro-ips).
 ---
 
 # Skill `/pro-blocks` — Pilotage des Blocs et Espaces Membres
@@ -9,8 +9,8 @@ description: Lecture, validation et mise à jour sécurisée de la structure et 
 > **Périmètre strict (Règle d'or)** : Cette skill s'adresse exclusivement aux partenaires du pôle **Finance** disposant de plateformes abonnés actives (`Panthéon Recherche` [12], `Institut de l'Épargne` [25], `Léman Finance Partners` [26]). Les autres partenaires (Santé, Développement personnel, Spiritualité, Survivalisme) ne disposent pas de plateformes abonnés et ne sont pas éligibles à cette commande.
 
 Cette skill permet de consulter et modifier la structure et les blocs d'un espace membre (navigation, blocs d'accueil, branding, libellés, options) :
-- **Découverte des sites autorisés** via le portail Pro-Pilot (`GET https://pro-pilot.propulse-lab.com/api/ai-child/sites`) ;
-- **Lecture, validation et publication en direct** depuis le poste de l'utilisateur vers `https://www-admin.<domain>/wp-json/ai-child/v1/platform` via Application Password WordPress et liste blanche IP `pro-ips`.
+- **Mode principal (Broker Pro-Pilot)** : découvertes et mutations via `https://pro-pilot.propulse-lab.com/api/ai-child/*` avec `PRO_PILOT_WRITE_TOKEN` seul (zéro mot de passe WordPress, zéro whitelist `pro-ips`) ;
+- **Mode repli automatique (Direct `www-admin`)** : uniquement si le Broker renvoie `410` (`relay_retired`) ou `503` (`broker_unconfigured`), appel direct vers `https://www-admin.<domain>/wp-json/ai-child/v1/platform` via Application Password WordPress et liste blanche IP `pro-ips`.
 
 ---
 
@@ -25,7 +25,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.1.4"
+CURRENT_VERSION = "1.2.0"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -128,7 +128,7 @@ PY
 
 ---
 
-## 1. Découverte des Sites Autorisés (`GET /api/ai-child/sites`) & Authentification Directe `pro-ips`
+## 1. Découverte des Sites Autorisés (`GET /api/ai-child/sites`) & Modes d'Accès (Broker Principal + Repli Direct)
 
 Avant toute opération :
 1. Charger la configuration locale (`.env`) et vérifier la présence de `PRO_PILOT_WRITE_TOKEN`.
@@ -138,24 +138,18 @@ Avant toute opération :
      "https://pro-pilot.propulse-lab.com/api/ai-child/sites"
    ```
    *(En mode multi-partenaires, ajouter `?partner=<slug>` si nécessaire.)*
-   La cible d'administration WordPress de chaque site se déduit directement de `domain` :
-   `https://www-admin.${DOMAIN}/wp-json/ai-child/v1/platform`.
 3. **Accueil proactif & Menu d'actions en 3 choix** :
    - Si la liste est vide, indiquer sobrement qu'aucun site Fulfi n'est rattaché à cette organisation.
    - Si l'utilisateur lance `/pro-blocks` sans action précise, présente la liste des espaces membres disponibles et propose ce menu :
      1. **🎨 1. Branding & Identité Visuelle** : Mettre à jour le logo, le favicon, la couleur d'accent (`--brand-*`) ou les couleurs de la barre latérale (`--rail-*`).
      2. **🧭 2. Navigation & Onglets** : Consulter l'arborescence des rubriques abonnés, réordonner les onglets, masquer ou ajouter une page.
      3. **🧩 3. Blocs d'Accueil & Contenus** : Ajouter, modifier ou réorganiser les blocs de la page d'accueil (vidéos à la une, callouts de réassurance, carrousels, liens rapides).
-4. **Résolution de l'Application Password WordPress & Diagnostic WAF `pro-ips`** :
-   - Pour un site cible (`SITE_SLUG`, `SITE_UPPER` en majuscules ex. `CRY`, `DOMAIN`, `SITE_PARTNER_ID`), résoudre les identifiants Application Password par ordre de priorité strict :
-     1. `WP_APP_USER_<SITE_UPPER>` / `WP_APP_PASSWORD_<SITE_UPPER>` dans `.env` ;
-     2. `WP_APP_USER` / `WP_APP_PASSWORD` dans `.env` (**uniquement** si `PARTNER_ID` dans `.env` est égal à `site.partnerId` — cloisonnement fail-closed) ;
-     3. `~/.pro-web-static/wp-apps.json` (recherche par `<SITE_UPPER>`, `<slug>`, `<domain>`, `www.<domain>`).
-   - Si aucun identifiant n'est trouvé, demander sobrement à l'utilisateur son identifiant et son mot de passe d'application WordPress pour ce site (enregistrés localement en `0600` dans `~/.pro-web-static/wp-apps.json` ou `.env`).
-   - Exécuter le pre-flight réel sans suivre de redirection (`NoRedirect`) sur `GET https://www-admin.${DOMAIN}/wp-json/wp/v2/users/me?context=edit` :
-     - **`HTTP 500` + en-tête `server: AmazonS3`** $\rightarrow$ **Filtrage WAF IP (`pro-ips`)** : interrompre immédiatement et demander à l'utilisateur de se connecter à **`https://pro-ips.propulse-lab.com`** pour autoriser son adresse IP actuelle avant de réessayer.
-     - **`HTTP 401` ou `HTTP 403`** $\rightarrow$ Application Password WordPress invalide, révoqué ou compte sans capacité d'administration sur ce site.
-     - **`HTTP 200`** $\rightarrow$ Accès direct `www-admin.<domain>` validé.
+4. **Mode Principal (Broker Pro-Pilot) vs Mode Repli Automatique (`www-admin` + `pro-ips`)** :
+   - **Mode Principal (Broker)** : `pro_blocks_client.py` appelle d'abord `https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}` avec `PRO_PILOT_WRITE_TOKEN` seul — **aucun mot de passe WordPress ni whitelist `pro-ips` requis**.
+   - **Mode Repli Automatique (`direct`)** : si et seulement si le Broker renvoie `HTTP 410` (`relay_retired`) ou `HTTP 503` (`broker_unconfigured`) — ou `mode: "local_syntax_only"` sur `/validate` — le client bascule automatiquement sur l'appel direct `https://www-admin.${DOMAIN}/wp-json/ai-child/v1/platform` via Application Password WordPress (`WP_APP_USER_<SITE_UPPER>` / `WP_APP_PASSWORD_<SITE_UPPER>` dans `.env`, puis `WP_APP_USER` / `WP_APP_PASSWORD` si `PARTNER_ID == site.partnerId`, puis `~/.pro-web-static/wp-apps.json`).
+   - En mode repli :
+     - Si **`AUTH_MISSING`** remonte : ne **jamais** lancer de saisie masquée ou bloquante dans le terminal ; demander calmement à l'utilisateur dans le chat son identifiant et son Application Password WordPress pour ce site (puis les enregistrer localement en `0600` dans `~/.pro-web-static/wp-apps.json` sans réafficher le mot de passe).
+     - Si **`WAF_PRO_IPS_BLOCKED`** (`HTTP 500` + `server: AmazonS3`) remonte : inviter l'utilisateur à ouvrir **`https://pro-ips.propulse-lab.com`** pour autoriser son adresse IP actuelle, puis réessayer.
 
 ---
 
@@ -282,41 +276,83 @@ def detect_destructive_nav(submitted_platform, fresh_data):
         return "destructive_nav_shrink"
     return None
 
-def call_wp(method, url, auth_hdr, raw_body=None):
+BROKER_BASE = "https://pro-pilot.propulse-lab.com/api/ai-child/platform"
+
+def call_http(method, url, headers, raw_body=None):
     opener = urllib.request.build_opener(NoRedirectHandler())
-    headers = {"Authorization": auth_hdr, "Accept": "application/json", "User-Agent": "Pro-Pilot-Blocks/1.1"}
+    req_headers = {"Accept": "application/json", "User-Agent": "Pro-Pilot-Blocks/1.2", **headers}
     if raw_body is not None:
-        headers["Content-Type"] = "application/json; charset=utf-8"
-    req = urllib.request.Request(url, data=raw_body, headers=headers, method=method)
+        req_headers["Content-Type"] = "application/json; charset=utf-8"
+    req = urllib.request.Request(url, data=raw_body, headers=req_headers, method=method)
     try:
-        with opener.open(req, timeout=20) as resp:
+        with opener.open(req, timeout=25) as resp:
             return resp.status, dict(resp.headers.items()), resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as err:
         body = err.read().decode("utf-8", errors="replace") if err.fp else ""
-        hdrs = dict(err.headers.items()) if err.headers else {}
-        server_hdr = str(hdrs.get("Server") or hdrs.get("server") or "")
-        if err.code == 500 and "amazons3" in server_hdr.lower():
-            raise SystemExit("WAF_PRO_IPS_BLOCKED: Accès bloqué par le pare-feu IP (HTTP 500 AmazonS3). Connectez-vous sur https://pro-ips.propulse-lab.com puis réessayez.")
-        if err.code in (401, 403):
-            raise SystemExit(f"WP_AUTH_REJECTED: HTTP {err.code} sur {url} (vérifier Application Password WordPress).")
-        return err.code, hdrs, body
+        return err.code, (dict(err.headers.items()) if err.headers else {}), body
+
+def call_wp(method, url, auth_hdr, raw_body=None):
+    st, hdrs, body = call_http(method, url, {"Authorization": auth_hdr}, raw_body)
+    server_hdr = str(hdrs.get("Server") or hdrs.get("server") or "")
+    if st == 500 and "amazons3" in server_hdr.lower():
+        raise SystemExit("WAF_PRO_IPS_BLOCKED: Accès bloqué par le pare-feu IP (HTTP 500 AmazonS3). Connectez-vous sur https://pro-ips.propulse-lab.com puis réessayez.")
+    if st in (401, 403):
+        raise SystemExit(f"WP_AUTH_REJECTED: HTTP {st} sur {url} (vérifier Application Password WordPress).")
+    return st, hdrs, body
+
+def try_broker(action, slug, env, raw_bytes=None):
+    token = env.get("PRO_PILOT_WRITE_TOKEN", "").strip()
+    if not token:
+        return None
+    hdrs = {"Authorization": f"Bearer {token}"}
+    if action in ("preflight", "get"):
+        st, _, body = call_http("GET", f"{BROKER_BASE}/{slug}", hdrs)
+    elif action == "validate":
+        st, _, body = call_http("POST", f"{BROKER_BASE}/{slug}/validate", hdrs, raw_bytes)
+    else:
+        st, _, body = call_http("PUT", f"{BROKER_BASE}/{slug}", hdrs, raw_bytes)
+    if st in (410, 503):
+        return None
+    if st == 401:
+        raise SystemExit("BROKER_TOKEN_INVALID: Jeton Pro-Pilot invalide ou expiré. Reconnectez-vous sur https://pro-pilot.propulse-lab.com/ pour actualiser .env.")
+    if st == 403:
+        raise SystemExit(f"BROKER_FORBIDDEN: Accès refusé (HTTP 403) sur {slug} : {body[:200]}")
+    if action == "validate" and st == 200:
+        try:
+            if json.loads(body).get("mode") == "local_syntax_only":
+                return None
+        except Exception:
+            pass
+    return st, body
 
 def main():
     action, slug, domain, pid = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
     env = load_dotenv()
-    auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
     clean_domain = re.sub(r"^www\.", "", domain.lower())
     base_url = f"https://www-admin.{clean_domain}/wp-json/ai-child/v1/platform"
 
     if action == "preflight":
-        st, _, body = call_wp("GET", f"https://www-admin.{clean_domain}/wp-json/wp/v2/users/me?context=edit", auth_hdr)
+        res = try_broker("preflight", slug, env)
+        if res is not None:
+            st, body = res
+            if st != 200:
+                raise SystemExit(f"PREFLIGHT_FAILED: HTTP {st} {body[:200]}")
+            print(json.dumps({"ok": True, "mode": "broker", "slug": slug}))
+            return
+        auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
+        st, _, _ = call_wp("GET", f"https://www-admin.{clean_domain}/wp-json/wp/v2/users/me?context=edit", auth_hdr)
         if st != 200:
             raise SystemExit(f"PREFLIGHT_FAILED: HTTP {st}")
-        print(json.dumps({"ok": True, "slug": slug, "adminDomain": f"www-admin.{clean_domain}"}))
+        print(json.dumps({"ok": True, "mode": "direct", "slug": slug, "adminDomain": f"www-admin.{clean_domain}"}))
         return
 
     if action == "get":
-        st, _, body = call_wp("GET", base_url, auth_hdr)
+        res = try_broker("get", slug, env)
+        if res is not None:
+            mode, (st, body) = "broker", res
+        else:
+            mode = "direct"
+            st, _, body = call_wp("GET", base_url, resolve_wp_basic_auth(env, slug, domain, pid))
         if st != 200:
             raise SystemExit(f"GET_FAILED: HTTP {st} {body[:300]}")
         data = json.loads(body)
@@ -325,16 +361,14 @@ def main():
         bak = Path(f".tmp/backup-pro-blocks-{slug}-v{ver}.json")
         bak.write_text(json.dumps({"version": ver, "overrides": data.get("overrides", {})}, indent=2, ensure_ascii=False), encoding="utf-8")
         os.chmod(bak, 0o600)
-        print(json.dumps({"ok": True, "version": ver, "backup": str(bak)}))
+        print(json.dumps({"ok": True, "mode": mode, "version": ver, "backup": str(bak)}))
         return
 
     if action in ("validate", "put"):
-        fresh_path = Path(f".tmp/platform-{slug}.json")
-        payload_path = Path(f".tmp/payload-{slug}.json")
-        raw_bytes = payload_path.read_bytes()
+        raw_bytes = Path(f".tmp/payload-{slug}.json").read_bytes()
         if len(raw_bytes) > MAX_BODY_BYTES:
             raise SystemExit("PAYLOAD_TOO_LARGE: dépasse 1 MiB.")
-        fresh = json.loads(fresh_path.read_text(encoding="utf-8"))
+        fresh = json.loads(Path(f".tmp/platform-{slug}.json").read_text(encoding="utf-8"))
         payload = json.loads(raw_bytes.decode("utf-8"))
         shape_err = validate_mutation_payload_shape(payload)
         if shape_err:
@@ -345,9 +379,12 @@ def main():
         nav_err = detect_destructive_nav(payload["platform"], fresh)
         if nav_err:
             raise SystemExit(f"DESTRUCTIVE_NAV_BLOCKED ({nav_err}): suppression ou réduction >50% de la navigation refusée.")
-        target = f"{base_url}/validate" if action == "validate" else base_url
-        method = "POST" if action == "validate" else "PUT"
-        st, _, body = call_wp(method, target, auth_hdr, raw_bytes)
+        res = try_broker(action, slug, env, raw_bytes)
+        if res is not None:
+            st, body = res
+        else:
+            auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
+            st, _, body = call_wp("POST" if action == "validate" else "PUT", f"{base_url}/validate" if action == "validate" else base_url, auth_hdr, raw_bytes)
         print(body)
         if st >= 400:
             raise SystemExit(1)
@@ -358,16 +395,17 @@ if __name__ == "__main__":
 PY
 ```
 
-### Étape 1 — Pre-flight `pro-ips`, Lecture & Sauvegarde Préventive Obligatoire
+### Étape 1 — Pre-flight, Lecture & Sauvegarde Préventive Obligatoire
 ```bash
 python3 .tmp/pro_blocks_client.py preflight "${SITE_SLUG}" "${DOMAIN}" "${SITE_PARTNER_ID}"
 python3 .tmp/pro_blocks_client.py get "${SITE_SLUG}" "${DOMAIN}" "${SITE_PARTNER_ID}"
 ```
-- Si `WAF_PRO_IPS_BLOCKED` remonte, inviter l'utilisateur à ouvrir **`https://pro-ips.propulse-lab.com`**, s'authentifier pour whitelister son IP, puis confirmer une fois connecté.
+- En mode `broker`, la connexion passe directement par Pro-Pilot (`mode: "broker"`).
+- En mode repli `direct`, si `AUTH_MISSING` ou `WAF_PRO_IPS_BLOCKED` remonte, guider l'utilisateur comme indiqué en section 1.4 sans jamais lancer de prompt interactif caché.
 - Vérifier que la sauvegarde `.tmp/backup-pro-blocks-${SITE_SLUG}-v${VERSION}.json` est bien créée avant toute édition.
 
 ### Étape 2 — Patch Minimal sur `.overrides`, Garde-Fous Locaux & Validation Serveur (`POST .../validate`)
-Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis exécuter la double validation (garde-fous locaux `detect_defaults_freeze` + `detect_destructive_nav`, suivis du `POST https://www-admin.${DOMAIN}/wp-json/ai-child/v1/platform/validate`) :
+Préparer `.tmp/payload-${SITE_SLUG}.json` contenant exclusivement `{ "platform": <overrides_patchés>, "baseVersion": <version> }`, vérifier par diff que **seules** les clés demandées ont changé, puis exécuter la double validation (garde-fous locaux `detect_defaults_freeze` + `detect_destructive_nav`, suivis de la validation serveur via Broker ou repli direct `www-admin`) :
 ```bash
 python3 .tmp/pro_blocks_client.py validate "${SITE_SLUG}" "${DOMAIN}" "${SITE_PARTNER_ID}"
 ```
@@ -381,7 +419,7 @@ Présenter clairement à l'utilisateur :
 - Les éventuels avertissements (`warnings` ou `Top Menu`).
 Attendre un accord explicite (**« Oui » / « Go » / « Publie »**) avant d'appeler `PUT`.
 
-### Étape 4 — Publication Directe (`PUT .../wp-json/ai-child/v1/platform`) & Passerelle Design System
+### Étape 4 — Publication & Passerelle Design System
 ```bash
 python3 .tmp/pro_blocks_client.py put "${SITE_SLUG}" "${DOMAIN}" "${SITE_PARTNER_ID}"
 ```

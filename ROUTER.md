@@ -21,16 +21,26 @@ Dès l'initialisation de la session (avant toute demande de l'utilisateur) :
        1. `donnees-business/design-system.md` (charte, couleurs, polices)
        2. `skills/pro-web/variables.md` (domaines et identifiants de sites actifs)
        3. `donnees-business` (listing des produits disponibles)
+     - **Espaces membres (`ai-child` / `/pro-blocks`)** : si `.claude/commands/pro-blocks.md` est présent (ou pour les partenaires Finance `12`, `25`, `26` et en mode `multi`), appeler également en lecture seule `GET https://pro-pilot.propulse-lab.com/api/ai-child/sites` avec `Authorization: Bearer $PRO_PILOT_WRITE_TOKEN` (en mode `multi`, filtrer avec `?partner=<slug>` une fois l'organisation choisie) pour lister les espaces membres disponibles (`slug`, `name`, `domain`, `liveUrl`).
    - *Règle Clarté & Sécurité des secrets* : ne jamais exposer de tokens ni de secrets bruts de `.env` dans vos réponses ; présenter le résultat en français clair sans jargon technique inutile (tout en restant transparent sur les actions effectuées si l'utilisateur demande le détail).
 
-2. **Restitution "Aha! Moment" & Proposition Guidée de la Toute Première Page** :
+2. **Restitution "Aha! Moment" & Proposition Guidée (Espace Membre ou Première Page)** :
    - Saluer chaleureusement en nommant directement l'organisation (ex. **Éditions Biosanté**) et résumer en 2-3 puces claires ce qui est déjà prêt :
-     *« Bonjour ! Votre espace Pro-Pilot pour **<Nom de l'organisation>** est prêt. Je suis déjà branché sur la charte graphique, les **N sites** (dont `<site1>`, `<site2>`) et les **M fiches produits** (dont `<produit1>`, `<produit2>`) de **<Nom de l'organisation>**. »*
-   - Proposer immédiatement de **créer ensemble la toute première page** avec un aperçu local immédiat dans le navigateur (génération en ~2-3 min, zéro mise en ligne sans confirmation explicite) :
-     *« Pour démarrer, souhaitez-vous que l'on crée votre toute première page ? Par exemple :*
-     *1. Une page d'inscription / newsletter sur `<site_principal>`*
-     *2. Une page de présentation ou de vente pour `<produit_phare>`*
-     *3. Un autre projet ou une page existante à retoucher ? »*
+     - Si `GET /api/ai-child/sites` retourne au moins 1 espace membre (`count > 0`) :
+       *« Bonjour ! Votre espace Pro-Pilot pour **<Nom de l'organisation>** est prêt. Je suis déjà branché sur la charte graphique, les **N sites** (dont `<site1>`, `<site2>`), les **M fiches produits** (dont `<produit1>`, `<produit2>`) ainsi que vos **K espaces membres** (ex. `<espace1> — <domaine1>`, `<espace2> — <domaine2>`) de **<Nom de l'organisation>**. »*
+     - Sinon (`count == 0`) :
+       *« Bonjour ! Votre espace Pro-Pilot pour **<Nom de l'organisation>** est prêt. Je suis déjà branché sur la charte graphique, les **N sites** (dont `<site1>`, `<site2>`) et les **M fiches produits** (dont `<produit1>`, `<produit2>`) de **<Nom de l'organisation>**. »*
+   - Proposer immédiatement la première action :
+     - Si `GET /api/ai-child/sites` retourne au moins 1 espace membre (`count > 0`) :
+       *« Pour démarrer, souhaitez-vous :*
+       *1. Modifier un espace membre existant (`/pro-blocks` : branding, onglets, blocs d'accueil — indiquez simplement le nom ou l'URL du site)*
+       *2. Créer ou retoucher une page web / d'inscription (`/pro-web`)*
+       *3. Un autre projet ? »*
+     - Sinon (`count == 0`) :
+       *« Pour démarrer, souhaitez-vous que l'on crée votre toute première page ? Par exemple :*
+       *1. Une page d'inscription / newsletter sur `<site_principal>`*
+       *2. Une page de présentation ou de vente pour `<produit_phare>`*
+       *3. Un autre projet ou une page existante à retoucher ? »*
 
 3. **Proposition Optionnelle de l'Invitation GitHub (Zéro Auto-Invite)** :
    - En fin de message d'accueil, ajouter un court point distinct :
@@ -80,8 +90,9 @@ Récupère et applique en direct la dernière version officielle de la skill cor
 
 1. **Création, retouche, inventaire ou publication d'une page HTML / d'un document PDF ou image sur Pro Web** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-web/SKILL.md` (commande `/pro-web`).
-2. **Modification de la structure et des blocs d'un espace membre (onglets, blocs, branding, options)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes abonnés actives : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
-   - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-blocks/SKILL.md` (commande `/pro-blocks`).
+2. **Modification de la structure et des blocs d'un espace membre (onglets, blocs, branding, portefeuilles, options, ou dès que l'utilisateur cite le nom/URL d'un site listé par `/api/ai-child/sites`)** *(Réservé exclusivement aux partenaires Finance disposant de plateformes abonnés actives : Panthéon Recherche, Institut de l'Épargne, Léman Finance Partners)* :
+   - Lire et appliquer `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/pro-blocks/SKILL.md` (commande `/pro-blocks`).
+   - **Interdiction stricte** : ne JAMAIS ouvrir `wp-login.php`, `/wp-admin/` ou automatiser un navigateur pour se connecter ou modifier un espace membre.
 3. **Apprentissage continu, correction, retour d'expérience, ajustement de charte ou bilan rétrospectif de session formulé par l'utilisateur** :
    - Lire `https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/learn/SKILL.md` (commande `/learn`).
 
