@@ -1,6 +1,6 @@
 ---
 name: pro-blocks
-version: "1.2.0"
+version: "1.2.1"
 description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (Broker Pro-Pilot principal via PRO_PILOT_WRITE_TOKEN, avec repli direct www-admin.<domain> via pro-ips).
 ---
 
@@ -25,7 +25,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.2.0"
+CURRENT_VERSION = "1.2.1"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -148,7 +148,7 @@ Avant toute opération :
    - **Mode Principal (Broker)** : `pro_blocks_client.py` appelle d'abord `https://pro-pilot.propulse-lab.com/api/ai-child/platform/${SITE_SLUG}` avec `PRO_PILOT_WRITE_TOKEN` seul — **aucun mot de passe WordPress ni whitelist `pro-ips` requis**.
    - **Mode Repli Automatique (`direct`)** : si et seulement si le Broker renvoie `HTTP 410` (`relay_retired`) ou `HTTP 503` (`broker_unconfigured`) — ou `mode: "local_syntax_only"` sur `/validate` — le client bascule automatiquement sur l'appel direct `https://www-admin.${DOMAIN}/wp-json/ai-child/v1/platform` via Application Password WordPress (`WP_APP_USER_<SITE_UPPER>` / `WP_APP_PASSWORD_<SITE_UPPER>` dans `.env`, puis `WP_APP_USER` / `WP_APP_PASSWORD` si `PARTNER_ID == site.partnerId`, puis `~/.pro-web-static/wp-apps.json`).
    - En mode repli :
-     - Si **`AUTH_MISSING`** remonte : ne **jamais** lancer de saisie masquée ou bloquante dans le terminal ; demander calmement à l'utilisateur dans le chat son identifiant et son Application Password WordPress pour ce site (puis les enregistrer localement en `0600` dans `~/.pro-web-static/wp-apps.json` sans réafficher le mot de passe).
+     - Si **`AUTH_MISSING`** remonte : ne **jamais** lancer de saisie masquée ou bloquante dans le terminal ; demander calmement à l'utilisateur dans le chat son identifiant et son Application Password WordPress pour ce site (en lui fournissant le lien direct en 1 clic `https://www-admin.${DOMAIN}/wp-admin/profile.php#application-passwords-section` pour générer le mot de passe d'application, puis en l'enregistrant localement en `0600` dans `~/.pro-web-static/wp-apps.json` sans réafficher le secret).
      - Si **`WAF_PRO_IPS_BLOCKED`** (`HTTP 500` + `server: AmazonS3`) remonte : inviter l'utilisateur à ouvrir **`https://pro-ips.propulse-lab.com`** pour autoriser son adresse IP actuelle, puis réessayer.
 
 ---
