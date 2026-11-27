@@ -14,7 +14,7 @@
       "summary": "Apprentissage continu de règles métier et bilan rétrospectif de session dans l'inbox GitHub"
     },
     "pro-blocks": {
-      "version": "1.2.1",
+      "version": "1.3.0",
       "status": "partner_scoped",
       "eligible_partner_ids": [
         12,

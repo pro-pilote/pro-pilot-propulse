@@ -1,7 +1,7 @@
 ---
 name: pro-blocks
-version: "1.2.1"
-description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (Broker Pro-Pilot principal via PRO_PILOT_WRITE_TOKEN, avec repli direct www-admin.<domain> via pro-ips).
+version: "1.3.0"
+description: Lecture, validation et mise à jour sécurisée de la structure et des blocs des espaces membres abonnés (Broker Pro-Pilot ou jeton court Ed25519 Bearer via PRO_PILOT_WRITE_TOKEN, avec repli direct www-admin.<domain>).
 ---
 
 # Skill `/pro-blocks` — Pilotage des Blocs et Espaces Membres
@@ -10,7 +10,8 @@ description: Lecture, validation et mise à jour sécurisée de la structure et 
 
 Cette skill permet de consulter et modifier la structure et les blocs d'un espace membre (navigation, blocs d'accueil, branding, libellés, options) :
 - **Mode principal (Broker Pro-Pilot)** : découvertes et mutations via `https://pro-pilot.propulse-lab.com/api/ai-child/*` avec `PRO_PILOT_WRITE_TOKEN` seul (zéro mot de passe WordPress, zéro whitelist `pro-ips`) ;
-- **Mode repli automatique (Direct `www-admin`)** : uniquement si le Broker renvoie `410` (`relay_retired`) ou `503` (`broker_unconfigured`), appel direct vers `https://www-admin.<domain>/wp-json/ai-child/v1/platform` via Application Password WordPress et liste blanche IP `pro-ips`.
+- **Mode jeton court Ed25519 (`ed25519_bearer`)** : signature d'un jeton `60 s` via `POST /api/ai-child/mint-token` et appel direct `https://www-admin.<domain>/wp-json/ai-child/v1/platform` en `Authorization: Bearer` (zéro Application Password WordPress, seule IP `pro-ips` requise) ;
+- **Mode repli historique (Direct Basic Auth)** : si le site WordPress n'est pas encore à jour, repli sur Application Password WordPress (`WP_APP_PASSWORD*` + `PRO_PILOT_USER_EMAIL`).
 
 ---
 
@@ -25,7 +26,7 @@ MANIFEST_URL = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/
 LOADER_BASE = "https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/_loaders"
 SKILL_NAME = "pro-blocks"
 LOCAL_PATH = f".claude/commands/{SKILL_NAME}.md"
-CURRENT_VERSION = "1.2.1"
+CURRENT_VERSION = "1.3.0"
 LIVE_MARKER = "!`curl -fsSL https://raw.githubusercontent.com/pro-pilote/pro-pilot-propulse/main/skills/"
 
 try:
@@ -204,11 +205,12 @@ def load_dotenv(path=Path(".env")):
 
 def resolve_wp_basic_auth(env, slug, domain, site_partner_id):
     up = re.sub(r"[^A-Z0-9]+", "_", slug.upper()).strip("_")
-    u, p = env.get(f"WP_APP_USER_{up}", "").strip(), env.get(f"WP_APP_PASSWORD_{up}", "").strip()
+    fallback_u = env.get("PRO_PILOT_USER_EMAIL", "").strip()
+    u, p = (env.get(f"WP_APP_USER_{up}", "").strip() or fallback_u), env.get(f"WP_APP_PASSWORD_{up}", "").strip()
     if not (u and p):
         env_pid = str(env.get("PARTNER_ID", "")).strip()
         if env_pid and env_pid.isdigit() and int(env_pid) == int(site_partner_id):
-            u, p = env.get("WP_APP_USER", "").strip(), env.get("WP_APP_PASSWORD", "").strip()
+            u, p = (env.get("WP_APP_USER", "").strip() or fallback_u), env.get("WP_APP_PASSWORD", "").strip()
     if not (u and p):
         apps_file = Path.home() / ".pro-web-static" / "wp-apps.json"
         if apps_file.is_file():
@@ -277,10 +279,11 @@ def detect_destructive_nav(submitted_platform, fresh_data):
     return None
 
 BROKER_BASE = "https://pro-pilot.propulse-lab.com/api/ai-child/platform"
+MINT_URL = "https://pro-pilot.propulse-lab.com/api/ai-child/mint-token"
 
 def call_http(method, url, headers, raw_body=None):
     opener = urllib.request.build_opener(NoRedirectHandler())
-    req_headers = {"Accept": "application/json", "User-Agent": "Pro-Pilot-Blocks/1.2", **headers}
+    req_headers = {"Accept": "application/json", "User-Agent": "Pro-Pilot-Blocks/1.3", **headers}
     if raw_body is not None:
         req_headers["Content-Type"] = "application/json; charset=utf-8"
     req = urllib.request.Request(url, data=raw_body, headers=req_headers, method=method)
@@ -291,14 +294,47 @@ def call_http(method, url, headers, raw_body=None):
         body = err.read().decode("utf-8", errors="replace") if err.fp else ""
         return err.code, (dict(err.headers.items()) if err.headers else {}), body
 
-def call_wp(method, url, auth_hdr, raw_body=None):
+def call_wp(method, url, auth_hdr, raw_body=None, allow_401=False):
     st, hdrs, body = call_http(method, url, {"Authorization": auth_hdr}, raw_body)
     server_hdr = str(hdrs.get("Server") or hdrs.get("server") or "")
     if st == 500 and "amazons3" in server_hdr.lower():
         raise SystemExit("WAF_PRO_IPS_BLOCKED: Accès bloqué par le pare-feu IP (HTTP 500 AmazonS3). Connectez-vous sur https://pro-ips.propulse-lab.com puis réessayez.")
-    if st in (401, 403):
+    if st in (401, 403) and not (allow_401 and st == 401):
         raise SystemExit(f"WP_AUTH_REJECTED: HTTP {st} sur {url} (vérifier Application Password WordPress).")
     return st, hdrs, body
+
+def try_mint_bearer(action, slug, env):
+    token = env.get("PRO_PILOT_WRITE_TOKEN", "").strip()
+    if not token:
+        return None
+    method = "GET" if action in ("preflight", "get") else ("POST" if action == "validate" else "PUT")
+    sub_path = "platform/validate" if action == "validate" else "platform"
+    payload = json.dumps({"site": slug, "method": method, "subPath": sub_path}).encode("utf-8")
+    st, _, body = call_http("POST", MINT_URL, {"Authorization": f"Bearer {token}"}, payload)
+    if st == 401:
+        raise SystemExit("BROKER_TOKEN_INVALID: Jeton Pro-Pilot invalide ou expiré. Reconnectez-vous sur https://pro-pilot.propulse-lab.com/ pour actualiser .env.")
+    if st in (404, 405, 501, 503):
+        return None
+    if st in (403, 423, 429):
+        raise SystemExit(f"PORTAL_MINT_BLOCKED: HTTP {st} sur {slug} : {body[:200]}")
+    if st == 200:
+        try:
+            d = json.loads(body)
+            if d.get("ok") and d.get("token"):
+                return f"Bearer {d['token']}"
+        except Exception:
+            pass
+    return None
+
+def wp_request(action, method, url, slug, domain, pid, env, raw_bytes=None):
+    bearer = try_mint_bearer(action, slug, env)
+    if bearer:
+        st, _, body = call_wp(method, url, bearer, raw_bytes, allow_401=True)
+        if st != 401:
+            return "ed25519_bearer", st, body
+    auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
+    st, _, body = call_wp(method, url, auth_hdr, raw_bytes)
+    return "direct", st, body
 
 def try_broker(action, slug, env, raw_bytes=None):
     token = env.get("PRO_PILOT_WRITE_TOKEN", "").strip()
@@ -339,11 +375,10 @@ def main():
                 raise SystemExit(f"PREFLIGHT_FAILED: HTTP {st} {body[:200]}")
             print(json.dumps({"ok": True, "mode": "broker", "slug": slug}))
             return
-        auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
-        st, _, _ = call_wp("GET", f"https://www-admin.{clean_domain}/wp-json/wp/v2/users/me?context=edit", auth_hdr)
+        mode, st, _ = wp_request("preflight", "GET", base_url, slug, domain, pid, env)
         if st != 200:
             raise SystemExit(f"PREFLIGHT_FAILED: HTTP {st}")
-        print(json.dumps({"ok": True, "mode": "direct", "slug": slug, "adminDomain": f"www-admin.{clean_domain}"}))
+        print(json.dumps({"ok": True, "mode": mode, "slug": slug, "adminDomain": f"www-admin.{clean_domain}"}))
         return
 
     if action == "get":
@@ -351,8 +386,7 @@ def main():
         if res is not None:
             mode, (st, body) = "broker", res
         else:
-            mode = "direct"
-            st, _, body = call_wp("GET", base_url, resolve_wp_basic_auth(env, slug, domain, pid))
+            mode, st, body = wp_request("get", "GET", base_url, slug, domain, pid, env)
         if st != 200:
             raise SystemExit(f"GET_FAILED: HTTP {st} {body[:300]}")
         data = json.loads(body)
@@ -383,8 +417,9 @@ def main():
         if res is not None:
             st, body = res
         else:
-            auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
-            st, _, body = call_wp("POST" if action == "validate" else "PUT", f"{base_url}/validate" if action == "validate" else base_url, auth_hdr, raw_bytes)
+            wp_method = "POST" if action == "validate" else "PUT"
+            wp_url = f"{base_url}/validate" if action == "validate" else base_url
+            _, st, body = wp_request(action, wp_method, wp_url, slug, domain, pid, env, raw_bytes)
         print(body)
         if st >= 400:
             raise SystemExit(1)
