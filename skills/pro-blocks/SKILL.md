@@ -294,8 +294,8 @@ def call_http(method, url, headers, raw_body=None):
         body = err.read().decode("utf-8", errors="replace") if err.fp else ""
         return err.code, (dict(err.headers.items()) if err.headers else {}), body
 
-def call_wp(method, url, auth_hdr, raw_body=None, allow_401=False):
-    st, hdrs, body = call_http(method, url, {"Authorization": auth_hdr}, raw_body)
+def call_wp(method, url, auth_hdr, raw_body=None, allow_401=False, header_name="Authorization"):
+    st, hdrs, body = call_http(method, url, {header_name: auth_hdr}, raw_body)
     server_hdr = str(hdrs.get("Server") or hdrs.get("server") or "")
     if st == 500 and "amazons3" in server_hdr.lower():
         raise SystemExit("WAF_PRO_IPS_BLOCKED: Accès bloqué par le pare-feu IP (HTTP 500 AmazonS3). Connectez-vous sur https://pro-ips.propulse-lab.com puis réessayez.")
@@ -321,7 +321,7 @@ def try_mint_bearer(action, slug, env):
         try:
             d = json.loads(body)
             if d.get("ok") and d.get("token"):
-                return f"Bearer {d['token']}"
+                return d["token"]
         except Exception:
             pass
     return None
@@ -329,7 +329,7 @@ def try_mint_bearer(action, slug, env):
 def wp_request(action, method, url, slug, domain, pid, env, raw_bytes=None):
     bearer = try_mint_bearer(action, slug, env)
     if bearer:
-        st, _, body = call_wp(method, url, bearer, raw_bytes, allow_401=True)
+        st, _, body = call_wp(method, url, bearer, raw_bytes, allow_401=True, header_name="X-ProPilot-Token")
         if st != 401:
             return "ed25519_bearer", st, body
     auth_hdr = resolve_wp_basic_auth(env, slug, domain, pid)
